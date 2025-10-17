@@ -7,37 +7,46 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return Scaffold(
       appBar: AppBar(title: const Text('الإعدادات')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(isMobile ? 12.0 : 16.0),
         child: Center(
           child: Container(
-            constraints: const BoxConstraints(maxWidth: 600),
+            constraints: BoxConstraints(
+              maxWidth: isMobile ? double.infinity : 600,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Theme Settings Card
                 Card(
-                  elevation: 4,
+                  elevation: isMobile ? 1 : 2,
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: EdgeInsets.all(isMobile ? 12.0 : 16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'المظهر',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: isMobile ? 16 : 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: isMobile ? 12 : 16),
                         Consumer<ThemeProvider>(
                           builder: (context, themeProvider, child) {
                             return SwitchListTile(
-                              title: const Text('الوضع الداكن'),
-                              subtitle: const Text(
+                              title: Text(
+                                'الوضع الداكن',
+                                style: TextStyle(fontSize: isMobile ? 14 : 16),
+                              ),
+                              subtitle: Text(
                                 'تغيير مظهر التطبيق بين الوضع الفاتح والداكن',
+                                style: TextStyle(fontSize: isMobile ? 12 : 13),
                               ),
                               value: themeProvider.isDarkMode,
                               onChanged: (value) {
@@ -48,6 +57,7 @@ class SettingsScreen extends StatelessWidget {
                                     ? Icons.dark_mode
                                     : Icons.light_mode,
                               ),
+                              contentPadding: EdgeInsets.zero,
                             );
                           },
                         ),
@@ -55,81 +65,87 @@ class SettingsScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: isMobile ? 12 : 16),
+
+                // Backup Card
                 Card(
-                  elevation: 4,
+                  elevation: isMobile ? 1 : 2,
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: EdgeInsets.all(isMobile ? 12.0 : 16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'النسخ الاحتياطي',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: isMobile ? 16 : 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        ListTile(
-                          leading: const Icon(Icons.backup),
-                          title: const Text('إنشاء نسخة احتياطية'),
-                          subtitle: const Text(
-                            'حفظ جميع البيانات في ملف خارجي',
-                          ),
+                        SizedBox(height: isMobile ? 8 : 12),
+                        _buildListTile(
+                          leading: Icons.backup,
+                          title: 'إنشاء نسخة احتياطية',
+                          subtitle: 'حفظ جميع البيانات في ملف خارجي',
                           onTap: () {
-                            // TODO: Implement backup functionality
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('تم إنشاء نسخة احتياطية بنجاح'),
                               ),
                             );
                           },
+                          isMobile: isMobile,
                         ),
-                        const Divider(),
-                        ListTile(
-                          leading: const Icon(Icons.restore),
-                          title: const Text('استعادة من نسخة احتياطية'),
-                          subtitle: const Text('استعادة البيانات من ملف خارجي'),
+                        Divider(height: isMobile ? 12 : 16),
+                        _buildListTile(
+                          leading: Icons.restore,
+                          title: 'استعادة من نسخة احتياطية',
+                          subtitle: 'استعادة البيانات من ملف خارجي',
                           onTap: () {
-                            // TODO: Implement restore functionality
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('تم استعادة البيانات بنجاح'),
                               ),
                             );
                           },
+                          isMobile: isMobile,
                         ),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: isMobile ? 12 : 16),
+
+                // About Card
                 Card(
-                  elevation: 4,
+                  elevation: isMobile ? 1 : 2,
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: EdgeInsets.all(isMobile ? 12.0 : 16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'حول التطبيق',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: isMobile ? 16 : 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        const ListTile(
-                          leading: Icon(Icons.info_outline),
-                          title: Text('إدارة مخزون أجهزة اللابتوب'),
-                          subtitle: Text('الإصدار 1.0.0'),
+                        SizedBox(height: isMobile ? 8 : 12),
+                        _buildListTile(
+                          leading: Icons.info_outline,
+                          title: 'إدارة مخزون أجهزة اللابتوب',
+                          subtitle: 'الإصدار 1.0.0',
+                          isMobile: isMobile,
+                          isClickable: false,
                         ),
-                        const Divider(),
-                        const ListTile(
-                          leading: Icon(Icons.code),
-                          title: Text('المطور'),
-                          subtitle: Text('كريم ناصر'),
+                        Divider(height: isMobile ? 12 : 16),
+                        _buildListTile(
+                          leading: Icons.code,
+                          title: 'المطور',
+                          subtitle: 'كريم ناصر',
+                          isMobile: isMobile,
+                          isClickable: false,
                         ),
                       ],
                     ),
@@ -140,6 +156,29 @@ class SettingsScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildListTile({
+    required IconData leading,
+    required String title,
+    required String subtitle,
+    VoidCallback? onTap,
+    required bool isMobile,
+    bool isClickable = true,
+  }) {
+    return ListTile(
+      leading: Icon(leading),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: isMobile ? 14 : 15,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      subtitle: Text(subtitle, style: TextStyle(fontSize: isMobile ? 12 : 13)),
+      onTap: isClickable ? onTap : null,
+      contentPadding: EdgeInsets.zero,
     );
   }
 }

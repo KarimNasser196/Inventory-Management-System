@@ -14,50 +14,81 @@ class LaptopCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return Card(
-      elevation: 3,
+      elevation: 2,
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(12.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header with name and status
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
                   child: Text(
                     laptop.name,
-                    style: const TextStyle(
-                      fontSize: 18,
+                    style: TextStyle(
+                      fontSize: isMobile ? 16 : 18,
                       fontWeight: FontWeight.bold,
                     ),
                     overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
                 ),
+                const SizedBox(width: 8),
                 _buildStatusChip(laptop.status),
               ],
             ),
-            const Divider(),
-            Text('الموديل: ${laptop.model}'),
-            const SizedBox(height: 4),
-            Text('الرقم التسلسلي: ${laptop.serialNumber}'),
-            const SizedBox(height: 4),
-            Text('السعر: ${laptop.price} جنيه'),
-            if (laptop.status == AppConstants.statusSold &&
-                laptop.customer != null)
-              Column(
+            const SizedBox(height: 8),
+
+            // Divider
+            Divider(height: 1, color: Colors.grey[300]),
+            const SizedBox(height: 8),
+
+            // Details
+            Expanded(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  _buildDetailRow('الموديل:', laptop.model),
                   const SizedBox(height: 4),
-                  Text('المشتري: ${laptop.customer}'),
+                  _buildDetailRow('المواصفات:', laptop.serialNumber, isSmall: true),
+                  const SizedBox(height: 4),
+                  _buildDetailRow(
+                    'السعر:',
+                    '${laptop.price} جنيه',
+                    isBold: true,
+                    isPrice: true,
+                  ),
+                  if (laptop.status == AppConstants.statusSold &&
+                      laptop.customer != null)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 4),
+                        _buildDetailRow(
+                          'المشتري:',
+                          laptop.customer!,
+                          isSmall: true,
+                        ),
+                      ],
+                    ),
                 ],
               ),
-            const Spacer(),
+            ),
+
+            const SizedBox(height: 8),
+
+            // Action buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
+                _buildActionButton(
+                  icon: Icons.edit,
+                  color: Colors.blue,
                   onPressed: () {
                     Navigator.push(
                       context,
@@ -67,19 +98,22 @@ class LaptopCard extends StatelessWidget {
                     );
                   },
                   tooltip: 'تعديل',
+                  isMobile: isMobile,
                 ),
-                IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                const SizedBox(width: 2),
+                _buildActionButton(
+                  icon: Icons.delete,
+                  color: Colors.red,
                   onPressed: () => _confirmDelete(context),
                   tooltip: 'حذف',
+                  isMobile: isMobile,
                 ),
                 if (laptop.status != AppConstants.statusReturned)
-                  IconButton(
-                    icon: const Icon(
-                      Icons.replay,
-                      color: Colors.orange,
-                      size: 20,
-                    ),
+                  const SizedBox(width: 2),
+                if (laptop.status != AppConstants.statusReturned)
+                  _buildActionButton(
+                    icon: Icons.replay,
+                    color: Colors.orange,
                     onPressed: () {
                       if (laptop.status == AppConstants.statusAvailable) {
                         _showSaleDialog(context);
@@ -90,11 +124,67 @@ class LaptopCard extends StatelessWidget {
                     tooltip: laptop.status == AppConstants.statusAvailable
                         ? 'بيع'
                         : 'استرجاع',
+                    isMobile: isMobile,
                   ),
               ],
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(
+    String label,
+    String value, {
+    bool isBold = false,
+    bool isSmall = false,
+    bool isPrice = false,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: isSmall ? 11 : 12,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey[600],
+          ),
+        ),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: isSmall ? 11 : 12,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              color: isPrice ? Colors.green : Colors.grey[800],
+            ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+    required String tooltip,
+    required bool isMobile,
+  }) {
+    return SizedBox(
+      width: isMobile ? 36 : 40,
+      height: isMobile ? 36 : 40,
+      child: IconButton(
+        icon: Icon(icon, size: isMobile ? 18 : 20),
+        color: color,
+        onPressed: onPressed,
+        tooltip: tooltip,
+        padding: EdgeInsets.zero,
       ),
     );
   }
@@ -122,10 +212,15 @@ class LaptopCard extends StatelessWidget {
     }
 
     return Chip(
-      label: Text(status),
-      backgroundColor: color.withOpacity(0.2),
+      label: Text(
+        status,
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+      ),
+      backgroundColor: color.withOpacity(0.15),
       labelStyle: TextStyle(color: color),
-      avatar: Icon(icon, color: color, size: 16),
+      avatar: Icon(icon, color: color, size: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
     );
   }
 
@@ -171,50 +266,53 @@ class LaptopCard extends StatelessWidget {
         content: Form(
           key: formKey,
           child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: customerController,
-                  decoration: const InputDecoration(
-                    labelText: 'اسم المشتري',
-                    icon: Icon(Icons.person),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 300),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: customerController,
+                    decoration: const InputDecoration(
+                      labelText: 'اسم المشتري',
+                      icon: Icon(Icons.person),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'الرجاء إدخال اسم المشتري';
+                      }
+                      return null;
+                    },
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'الرجاء إدخال اسم المشتري';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: priceController,
-                  decoration: const InputDecoration(
-                    labelText: 'السعر',
-                    icon: Icon(Icons.attach_money),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: priceController,
+                    decoration: const InputDecoration(
+                      labelText: 'السعر',
+                      icon: Icon(Icons.attach_money),
+                    ),
+                    keyboardType: TextInputType.number,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'الرجاء إدخال السعر';
+                      }
+                      if (double.tryParse(value) == null) {
+                        return 'الرجاء إدخال رقم صحيح';
+                      }
+                      return null;
+                    },
                   ),
-                  keyboardType: TextInputType.number,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'الرجاء إدخال السعر';
-                    }
-                    if (double.tryParse(value) == null) {
-                      return 'الرجاء إدخال رقم صحيح';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: notesController,
-                  decoration: const InputDecoration(
-                    labelText: 'ملاحظات',
-                    icon: Icon(Icons.note),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: notesController,
+                    decoration: const InputDecoration(
+                      labelText: 'ملاحظات',
+                      icon: Icon(Icons.note),
+                    ),
+                    maxLines: 3,
                   ),
-                  maxLines: 3,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

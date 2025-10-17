@@ -22,20 +22,16 @@ class DatabaseHelper {
 
   Future<Database> _initDB(String filePath) async {
     Directory documentsDirectory;
-    
+
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       documentsDirectory = await getApplicationDocumentsDirectory();
     } else {
       documentsDirectory = await getApplicationDocumentsDirectory();
     }
-    
+
     final path = join(documentsDirectory.path, filePath);
-    
-    return await openDatabase(
-      path,
-      version: 1,
-      onCreate: _createDB,
-    );
+
+    return await openDatabase(path, version: 1, onCreate: _createDB);
   }
 
   Future _createDB(Database db, int version) async {
@@ -109,11 +105,7 @@ class DatabaseHelper {
 
   Future<int> deleteLaptop(int id) async {
     final db = await instance.database;
-    return await db.delete(
-      'laptops',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    return await db.delete('laptops', where: 'id = ?', whereArgs: [id]);
   }
 
   // Sale operations
@@ -144,5 +136,12 @@ class DatabaseHelper {
   Future close() async {
     final db = await instance.database;
     db.close();
+  }
+
+  Future clear() async {
+    final db = await instance.database;
+    await db.delete('laptops');
+    await db.delete('sales');
+    await db.delete('returns');
   }
 }

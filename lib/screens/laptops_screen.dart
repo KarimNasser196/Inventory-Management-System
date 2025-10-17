@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:soundtry/models/return.dart';
 import 'package:soundtry/models/sale.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../models/laptop.dart';
 import '../providers/laptop_provider.dart';
 import '../utils/constants.dart';
@@ -19,6 +22,7 @@ class LaptopsScreen extends StatefulWidget {
 class _LaptopsScreenState extends State<LaptopsScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isGridView = true;
+  String _selectedStatus = 'الكل';
 
   @override
   void dispose() {
@@ -26,13 +30,31 @@ class _LaptopsScreenState extends State<LaptopsScreen> {
     super.dispose();
   }
 
+  List<Laptop> _filterLaptops(List<Laptop> laptops) {
+    if (_selectedStatus == 'الكل') {
+      return laptops;
+    }
+    return laptops.where((laptop) => laptop.status == _selectedStatus).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    final isTablet = MediaQuery.of(context).size.width < 1024;
+
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          onPressed: () {},
+          icon: IconButton(
+            onPressed: () {
+              Provider.of<LaptopProvider>(context, listen: false).resetData();
+            },
+            icon: Icon(Icons.delete),
+          ),
+        ),
         title: const Text('الأجهزة'),
         actions: [
-          // Toggle view
           IconButton(
             icon: Icon(_isGridView ? Icons.list : Icons.grid_view),
             onPressed: () {
@@ -48,11 +70,13 @@ class _LaptopsScreenState extends State<LaptopsScreen> {
         children: [
           // Search and Add bar
           Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
+            padding: const EdgeInsets.all(12.0),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.vertical,
+              child: Column(
+                children: [
+                  // Search bar
+                  TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
                       hintText: 'بحث...',
@@ -61,6 +85,7 @@ class _LaptopsScreenState extends State<LaptopsScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                      isDense: true,
                     ),
                     onChanged: (value) {
                       Provider.of<LaptopProvider>(
@@ -69,29 +94,105 @@ class _LaptopsScreenState extends State<LaptopsScreen> {
                       ).setSearchQuery(value);
                     },
                   ),
-                ),
-                const SizedBox(width: 16),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const LaptopFormScreen(),
+                  const SizedBox(height: 12),
+                  // Filter and Add button row
+                  if (isMobile)
+                    Column(
+                      children: [
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const LaptopFormScreen(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.add),
+                            label: const Text('إضافة جهاز جديد'),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const LaptopFormScreen(),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.add),
+                        label: const Text(
+                          'إضافة جهاز جديد',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 22,
+                            vertical: 22,
+                          ),
+                        ),
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.add),
-                  label: const Text('إضافة جهاز جديد'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
                     ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
+
+          // Stats bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            child: Consumer<LaptopProvider>(
+              builder: (context, laptopProvider, child) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildStatChip(
+                        'الكل',
+                        laptopProvider.laptops.length,
+                        Colors.grey,
+                        _selectedStatus == 'الكل',
+                      ),
+                      const SizedBox(width: 8),
+                      _buildStatChip(
+                        'متاح',
+                        laptopProvider.availableLaptopsCount,
+                        Colors.green,
+                        _selectedStatus == AppConstants.statusAvailable,
+                      ),
+                      const SizedBox(width: 8),
+                      _buildStatChip(
+                        'مباع',
+                        laptopProvider.soldLaptopsCount,
+                        Colors.blue,
+                        _selectedStatus == AppConstants.statusSold,
+                      ),
+                      const SizedBox(width: 8),
+                      _buildStatChip(
+                        'مرتجع',
+                        laptopProvider.returnedLaptopsCount,
+                        Colors.orange,
+                        _selectedStatus == AppConstants.statusReturned,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
 
           // Laptops list/grid
           Expanded(
@@ -101,18 +202,34 @@ class _LaptopsScreenState extends State<LaptopsScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                if (laptopProvider.laptops.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      'لا توجد أجهزة مسجلة',
-                      style: TextStyle(fontSize: 18),
+                final filteredLaptops = _filterLaptops(laptopProvider.laptops);
+
+                if (filteredLaptops.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.laptop_mac_sharp,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'لا توجد أجهزة',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 }
 
                 return _isGridView
-                    ? _buildGridView(laptopProvider)
-                    : _buildListView(laptopProvider);
+                    ? _buildGridView(filteredLaptops, isMobile, isTablet)
+                    : _buildListView(filteredLaptops);
               },
             ),
           ),
@@ -121,68 +238,190 @@ class _LaptopsScreenState extends State<LaptopsScreen> {
     );
   }
 
-  Widget _buildGridView(LaptopProvider laptopProvider) {
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        childAspectRatio: 1.5,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
+  Widget _buildStatChip(String label, int count, Color color, bool isSelected) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedStatus = label == 'الكل' ? 'الكل' : label;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withOpacity(0.3) : Colors.grey[200],
+          border: Border.all(
+            color: isSelected ? color : Colors.grey[300]!,
+            width: isSelected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? color : Colors.grey[700],
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                count.toString(),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-      itemCount: laptopProvider.laptops.length,
+    );
+  }
+
+  Widget _buildGridView(List<Laptop> laptops, bool isMobile, bool isTablet) {
+    int crossAxisCount;
+    double childAspectRatio;
+
+    if (isMobile) {
+      crossAxisCount = 1;
+      childAspectRatio = 1.2;
+    } else if (isTablet) {
+      crossAxisCount = 2;
+      childAspectRatio = 1.3;
+    } else {
+      crossAxisCount = 3;
+      childAspectRatio = 1.5;
+    }
+
+    return GridView.builder(
+      padding: const EdgeInsets.all(12),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        childAspectRatio: childAspectRatio,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+      ),
+      itemCount: laptops.length,
       itemBuilder: (context, index) {
-        final laptop = laptopProvider.laptops[index];
+        final laptop = laptops[index];
         return LaptopCard(laptop: laptop);
       },
     );
   }
 
-  Widget _buildListView(LaptopProvider laptopProvider) {
+  Widget _buildListView(List<Laptop> laptops) {
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: laptopProvider.laptops.length,
+      padding: const EdgeInsets.all(12),
+      itemCount: laptops.length,
       itemBuilder: (context, index) {
-        final laptop = laptopProvider.laptops[index];
+        final laptop = laptops[index];
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            title: Text(
-              laptop.name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Text('${laptop.model} - ${laptop.serialNumber}'),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildStatusChip(laptop.status),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.blue),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => LaptopFormScreen(laptop: laptop),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            laptop.name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${laptop.model} - ${laptop.serialNumber}',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 14,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
-                    );
-                  },
+                    ),
+                    const SizedBox(width: 8),
+                    _buildStatusChip(laptop.status),
+                  ],
                 ),
-                IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
-                  onPressed: () => _confirmDelete(context, laptop),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'السعر: ${laptop.price.toStringAsFixed(2)} جنيه',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.blue),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      LaptopFormScreen(laptop: laptop),
+                                ),
+                              );
+                            },
+                            iconSize: 22,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                          const SizedBox(width: 20),
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _confirmDelete(context, laptop),
+                            iconSize: 22,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                          SizedBox(width: 20),
+                          if (laptop.status != AppConstants.statusReturned)
+                            IconButton(
+                              icon: const Icon(
+                                Icons.replay,
+                                color: Colors.orange,
+                                size: 22,
+                              ),
+                              onPressed: () {
+                                if (laptop.status ==
+                                    AppConstants.statusAvailable) {
+                                  _showSaleDialog(context, laptop);
+                                } else if (laptop.status ==
+                                    AppConstants.statusSold) {
+                                  _showReturnDialog(context, laptop);
+                                }
+                              },
+                              iconSize: 20,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                if (laptop.status != AppConstants.statusReturned)
-                  IconButton(
-                    icon: const Icon(Icons.replay, color: Colors.orange),
-                    onPressed: () {
-                      if (laptop.status == AppConstants.statusAvailable) {
-                        _showSaleDialog(context, laptop);
-                      } else if (laptop.status == AppConstants.statusSold) {
-                        _showReturnDialog(context, laptop);
-                      }
-                    },
-                  ),
               ],
             ),
           ),
@@ -214,10 +453,11 @@ class _LaptopsScreenState extends State<LaptopsScreen> {
     }
 
     return Chip(
-      label: Text(status),
+      label: Text(status, style: const TextStyle(fontSize: 12)),
       backgroundColor: color.withOpacity(0.2),
       labelStyle: TextStyle(color: color),
-      avatar: Icon(icon, color: color, size: 16),
+      avatar: Icon(icon, color: color, size: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
     );
   }
 

@@ -13,10 +13,13 @@ class ReportsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    final isTablet = MediaQuery.of(context).size.width < 1024;
+
     return Scaffold(
       appBar: AppBar(title: const Text('التقارير')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(12.0),
         child: Consumer<LaptopProvider>(
           builder: (context, laptopProvider, child) {
             if (laptopProvider.isLoading) {
@@ -27,15 +30,15 @@ class ReportsScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Summary cards
-                _buildSummaryCards(laptopProvider),
-                const SizedBox(height: 24),
+                _buildSummaryCards(laptopProvider, isMobile, isTablet),
+                const SizedBox(height: 20),
 
                 // Charts
-                _buildCharts(laptopProvider),
-                const SizedBox(height: 24),
+                _buildCharts(laptopProvider, isMobile, isTablet),
+                const SizedBox(height: 20),
 
                 // Recent transactions
-                _buildRecentTransactions(laptopProvider),
+                _buildRecentTransactions(laptopProvider, isMobile),
               ],
             );
           },
@@ -44,35 +47,65 @@ class ReportsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSummaryCards(LaptopProvider laptopProvider) {
+  Widget _buildSummaryCards(
+    LaptopProvider laptopProvider,
+    bool isMobile,
+    bool isTablet,
+  ) {
+    final cards = [
+      (
+        title: 'الأجهزة المتاحة',
+        count: laptopProvider.availableLaptopsCount,
+        icon: Icons.laptop,
+        color: Colors.green,
+      ),
+      (
+        title: 'الأجهزة المباعة',
+        count: laptopProvider.soldLaptopsCount,
+        icon: Icons.shopping_cart,
+        color: Colors.blue,
+      ),
+      (
+        title: 'الأجهزة المرتجعة',
+        count: laptopProvider.returnedLaptopsCount,
+        icon: Icons.replay,
+        color: Colors.orange,
+      ),
+    ];
+
+    if (isMobile) {
+      return Column(
+        children: cards
+            .map(
+              (card) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _buildSummaryCard(
+                  title: card.title,
+                  count: card.count,
+                  icon: card.icon,
+                  color: card.color,
+                  isMobile: true,
+                ),
+              ),
+            )
+            .toList(),
+      );
+    }
+
     return Row(
       children: [
-        Expanded(
-          child: _buildSummaryCard(
-            title: 'الأجهزة المتاحة',
-            count: laptopProvider.availableLaptopsCount,
-            icon: Icons.laptop,
-            color: Colors.green,
+        for (int i = 0; i < cards.length; i++) ...[
+          Expanded(
+            child: _buildSummaryCard(
+              title: cards[i].title,
+              count: cards[i].count,
+              icon: cards[i].icon,
+              color: cards[i].color,
+              isMobile: false,
+            ),
           ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildSummaryCard(
-            title: 'الأجهزة المباعة',
-            count: laptopProvider.soldLaptopsCount,
-            icon: Icons.shopping_cart,
-            color: Colors.blue,
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildSummaryCard(
-            title: 'الأجهزة المرتجعة',
-            count: laptopProvider.returnedLaptopsCount,
-            icon: Icons.replay,
-            color: Colors.orange,
-          ),
-        ),
+          if (i < cards.length - 1) const SizedBox(width: 12),
+        ],
       ],
     );
   }
@@ -82,32 +115,44 @@ class ReportsScreen extends StatelessWidget {
     required int count,
     required IconData icon,
     required Color color,
+    required bool isMobile,
   }) {
     return Card(
-      elevation: 4,
+      elevation: 2,
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(12.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(icon, color: color, size: 32),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: color, size: 24),
+                ),
                 const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Text(
               count.toString(),
               style: TextStyle(
-                fontSize: 36,
+                fontSize: isMobile ? 28 : 32,
                 fontWeight: FontWeight.bold,
                 color: color,
               ),
@@ -118,31 +163,48 @@ class ReportsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCharts(LaptopProvider laptopProvider) {
+  Widget _buildCharts(
+    LaptopProvider laptopProvider,
+    bool isMobile,
+    bool isTablet,
+  ) {
     final availableCount = laptopProvider.availableLaptopsCount;
     final soldCount = laptopProvider.soldLaptopsCount;
     final returnedCount = laptopProvider.returnedLaptopsCount;
     final total = availableCount + soldCount + returnedCount;
 
+    if (total == 0) {
+      return Card(
+        elevation: 2,
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Center(
+            child: Text(
+              'لا توجد بيانات',
+              style: TextStyle(color: Colors.grey[600], fontSize: 14),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Card(
-      elevation: 4,
+      elevation: 2,
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(12.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
               'توزيع الأجهزة',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            SizedBox(
-              height: 300,
-              child: Row(
+            if (isMobile)
+              Column(
                 children: [
-                  // Pie chart
-                  Expanded(
-                    flex: 2,
+                  SizedBox(
+                    height: 200,
                     child: PieChart(
                       PieChartData(
                         sections: [
@@ -151,46 +213,95 @@ class ReportsScreen extends StatelessWidget {
                             title:
                                 '${((availableCount / total) * 100).toStringAsFixed(1)}%',
                             color: Colors.green,
-                            radius: 100,
+                            radius: 60,
+                            titleStyle: const TextStyle(fontSize: 12),
                           ),
                           PieChartSectionData(
                             value: soldCount.toDouble(),
                             title:
                                 '${((soldCount / total) * 100).toStringAsFixed(1)}%',
                             color: Colors.blue,
-                            radius: 100,
+                            radius: 60,
+                            titleStyle: const TextStyle(fontSize: 12),
                           ),
                           PieChartSectionData(
                             value: returnedCount.toDouble(),
                             title:
                                 '${((returnedCount / total) * 100).toStringAsFixed(1)}%',
                             color: Colors.orange,
-                            radius: 100,
+                            radius: 60,
+                            titleStyle: const TextStyle(fontSize: 12),
                           ),
                         ],
                         sectionsSpace: 2,
-                        centerSpaceRadius: 40,
+                        centerSpaceRadius: 30,
                       ),
                     ),
                   ),
-
-                  // Legend
-                  Expanded(
-                    flex: 1,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _buildLegendItem('متاح', Colors.green),
-                        const SizedBox(height: 16),
-                        _buildLegendItem('مباع', Colors.blue),
-                        const SizedBox(height: 16),
-                        _buildLegendItem('مرتجع', Colors.orange),
-                      ],
-                    ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildLegendItem('متاح', Colors.green),
+                      _buildLegendItem('مباع', Colors.blue),
+                      _buildLegendItem('مرتجع', Colors.orange),
+                    ],
                   ),
                 ],
+              )
+            else
+              SizedBox(
+                height: 280,
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: PieChart(
+                        PieChartData(
+                          sections: [
+                            PieChartSectionData(
+                              value: availableCount.toDouble(),
+                              title:
+                                  '${((availableCount / total) * 100).toStringAsFixed(1)}%',
+                              color: Colors.green,
+                              radius: 80,
+                            ),
+                            PieChartSectionData(
+                              value: soldCount.toDouble(),
+                              title:
+                                  '${((soldCount / total) * 100).toStringAsFixed(1)}%',
+                              color: Colors.blue,
+                              radius: 80,
+                            ),
+                            PieChartSectionData(
+                              value: returnedCount.toDouble(),
+                              title:
+                                  '${((returnedCount / total) * 100).toStringAsFixed(1)}%',
+                              color: Colors.orange,
+                              radius: 80,
+                            ),
+                          ],
+                          sectionsSpace: 2,
+                          centerSpaceRadius: 40,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 1,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildLegendItem('متاح', Colors.green),
+                          const SizedBox(height: 12),
+                          _buildLegendItem('مباع', Colors.blue),
+                          const SizedBox(height: 12),
+                          _buildLegendItem('مرتجع', Colors.orange),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
           ],
         ),
       ),
@@ -199,15 +310,19 @@ class ReportsScreen extends StatelessWidget {
 
   Widget _buildLegendItem(String label, Color color) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Container(width: 16, height: 16, color: color),
-        const SizedBox(width: 8),
-        Text(label),
+        Container(width: 14, height: 14, color: color),
+        const SizedBox(width: 6),
+        Text(label, style: const TextStyle(fontSize: 12)),
       ],
     );
   }
 
-  Widget _buildRecentTransactions(LaptopProvider laptopProvider) {
+  Widget _buildRecentTransactions(
+    LaptopProvider laptopProvider,
+    bool isMobile,
+  ) {
     final recentSales = laptopProvider.getRecentSales();
     final recentReturns = laptopProvider.getRecentReturns();
 
@@ -216,25 +331,31 @@ class ReportsScreen extends StatelessWidget {
       children: [
         const Text(
           'آخر العمليات',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
 
         // Recent sales
         Card(
-          elevation: 4,
+          elevation: 2,
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(12.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   'آخر عمليات البيع',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 if (recentSales.isEmpty)
-                  const Text('لا توجد عمليات بيع حديثة')
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      'لا توجد عمليات بيع حديثة',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    ),
+                  )
                 else
                   ListView.builder(
                     shrinkWrap: true,
@@ -253,27 +374,66 @@ class ReportsScreen extends StatelessWidget {
                         ),
                       );
 
-                      return ListTile(
-                        leading: const Icon(
-                          Icons.shopping_cart,
-                          color: Colors.blue,
-                        ),
-                        title: Text(laptop.name),
-                        subtitle: Text('المشتري: ${sale.customerName}'),
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
                           children: [
-                            Text(
-                              '${sale.price} جنيه',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.shopping_cart,
                                 color: Colors.blue,
+                                size: 18,
                               ),
                             ),
-                            Text(
-                              DateFormat('yyyy-MM-dd').format(sale.date),
-                              style: const TextStyle(fontSize: 12),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    laptop.name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    'المشتري: ${sale.customerName}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  '${sale.price} جنيه',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                Text(
+                                  DateFormat('yyyy-MM-dd').format(sale.date),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -284,23 +444,29 @@ class ReportsScreen extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
 
         // Recent returns
         Card(
-          elevation: 4,
+          elevation: 2,
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(12.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   'آخر عمليات الاسترجاع',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 if (recentReturns.isEmpty)
-                  const Text('لا توجد عمليات استرجاع حديثة')
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      'لا توجد عمليات استرجاع حديثة',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    ),
+                  )
                 else
                   ListView.builder(
                     shrinkWrap: true,
@@ -319,13 +485,56 @@ class ReportsScreen extends StatelessWidget {
                         ),
                       );
 
-                      return ListTile(
-                        leading: const Icon(Icons.replay, color: Colors.orange),
-                        title: Text(laptop.name),
-                        subtitle: Text('السبب: ${returnData.reason}'),
-                        trailing: Text(
-                          DateFormat('yyyy-MM-dd').format(returnData.date),
-                          style: const TextStyle(fontSize: 12),
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.replay,
+                                color: Colors.orange,
+                                size: 18,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    laptop.name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    'السبب: ${returnData.reason}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              DateFormat('yyyy-MM-dd').format(returnData.date),
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
                         ),
                       );
                     },

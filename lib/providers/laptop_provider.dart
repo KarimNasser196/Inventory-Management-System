@@ -11,22 +11,28 @@ class LaptopProvider with ChangeNotifier {
   bool _isLoading = false;
   String _searchQuery = '';
 
-  List<Laptop> get laptops => _searchQuery.isEmpty 
-      ? _laptops 
-      : _laptops.where((laptop) => 
-          laptop.name.contains(_searchQuery) || 
-          laptop.model.contains(_searchQuery) ||
-          laptop.serialNumber.contains(_searchQuery) ||
-          (laptop.customer?.contains(_searchQuery) ?? false)
-        ).toList();
-  
+  List<Laptop> get laptops => _searchQuery.isEmpty
+      ? _laptops
+      : _laptops
+            .where(
+              (laptop) =>
+                  laptop.name.contains(_searchQuery) ||
+                  laptop.model.contains(_searchQuery) ||
+                  laptop.serialNumber.contains(_searchQuery) ||
+                  (laptop.customer?.contains(_searchQuery) ?? false),
+            )
+            .toList();
+
   List<Sale> get sales => _sales;
   List<Return> get returns => _returns;
   bool get isLoading => _isLoading;
-  
-  int get availableLaptopsCount => _laptops.where((laptop) => laptop.status == 'متاح').length;
-  int get soldLaptopsCount => _laptops.where((laptop) => laptop.status == 'مباع').length;
-  int get returnedLaptopsCount => _laptops.where((laptop) => laptop.status == 'مرتجع').length;
+
+  int get availableLaptopsCount =>
+      _laptops.where((laptop) => laptop.status == 'متاح').length;
+  int get soldLaptopsCount =>
+      _laptops.where((laptop) => laptop.status == 'مباع').length;
+  int get returnedLaptopsCount =>
+      _laptops.where((laptop) => laptop.status == 'مرتجع').length;
 
   LaptopProvider() {
     fetchLaptops();
@@ -120,9 +126,9 @@ class LaptopProvider with ChangeNotifier {
         date: sale.date,
         notes: sale.notes,
       );
-      
+
       await DatabaseHelper.instance.updateLaptop(updatedLaptop);
-      
+
       // Add sale record
       final saleId = await DatabaseHelper.instance.insertSale(sale);
       final newSale = Sale(
@@ -133,13 +139,13 @@ class LaptopProvider with ChangeNotifier {
         date: sale.date,
         notes: sale.notes,
       );
-      
+
       // Update local data
       final index = _laptops.indexWhere((l) => l.id == laptop.id);
       if (index != -1) {
         _laptops[index] = updatedLaptop;
       }
-      
+
       _sales.add(newSale);
       notifyListeners();
     } catch (e) {
@@ -155,9 +161,9 @@ class LaptopProvider with ChangeNotifier {
         status: 'مرتجع',
         date: returnData.date,
       );
-      
+
       await DatabaseHelper.instance.updateLaptop(updatedLaptop);
-      
+
       // Add return record
       final returnId = await DatabaseHelper.instance.insertReturn(returnData);
       final newReturn = Return(
@@ -166,13 +172,13 @@ class LaptopProvider with ChangeNotifier {
         date: returnData.date,
         reason: returnData.reason,
       );
-      
+
       // Update local data
       final index = _laptops.indexWhere((l) => l.id == laptop.id);
       if (index != -1) {
         _laptops[index] = updatedLaptop;
       }
-      
+
       _returns.add(newReturn);
       notifyListeners();
     } catch (e) {
@@ -191,5 +197,18 @@ class LaptopProvider with ChangeNotifier {
     final sortedReturns = List<Return>.from(_returns)
       ..sort((a, b) => b.date.compareTo(a.date));
     return sortedReturns.take(limit).toList();
+  }
+
+  Future<void> resetData() async {
+    try {
+      await DatabaseHelper.instance.clear();
+      _laptops.clear();
+      _sales.clear();
+      _returns.clear();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error resetting data: $e');
+      rethrow;
+    }
   }
 }
