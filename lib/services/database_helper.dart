@@ -56,6 +56,8 @@ class DatabaseHelper {
 CREATE TABLE products (
   id $idType,
   name $textType,
+  category $textNullableType,
+  warehouse $textNullableType,
   model $textNullableType,
   specifications $textNullableType,
   purchasePrice $realType,

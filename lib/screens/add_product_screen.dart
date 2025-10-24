@@ -1,8 +1,9 @@
-// lib/screens/add_product_screen.dart (FIXED)
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:soundtry/screens/cat_screen.dart';
+import 'dart:convert';
 import '../models/product.dart';
 import '../providers/product_provider.dart';
 
@@ -17,7 +18,7 @@ class AddProductScreen extends StatefulWidget {
 class _AddProductScreenState extends State<AddProductScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
-  late TextEditingController _modelController; // FIX: Added model controller
+  late TextEditingController _modelController;
   late TextEditingController _specController;
   late TextEditingController _purchasePriceController;
   late TextEditingController _retailPriceController;
@@ -25,6 +26,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
   late TextEditingController _bulkWholesalePriceController;
   late TextEditingController _supplierController;
   late TextEditingController _quantityController;
+  late TextEditingController _warehouseController;
+
+  String? _selectedCategory;
+  List<String> _categories = [];
   bool _isSaveHovered = false;
   bool _isSaving = false;
   bool get _isEditing => widget.product != null;
@@ -32,6 +37,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   @override
   void initState() {
     super.initState();
+    _loadCategories();
     _nameController = TextEditingController(text: widget.product?.name ?? '');
     _modelController = TextEditingController(text: widget.product?.model ?? '');
     _specController = TextEditingController(
@@ -55,12 +61,24 @@ class _AddProductScreenState extends State<AddProductScreen> {
     _quantityController = TextEditingController(
       text: widget.product?.quantity.toString() ?? '',
     );
+    _warehouseController = TextEditingController(
+      text: widget.product?.warehouse ?? '',
+    );
+    _selectedCategory = widget.product?.category;
+  }
+
+  Future<void> _loadCategories() async {
+    final prefs = await SharedPreferences.getInstance();
+    final categoriesJson = prefs.getString('categories') ?? '[]';
+    setState(() {
+      _categories = List<String>.from(json.decode(categoriesJson));
+    });
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _modelController.dispose(); // FIX: Dispose model controller
+    _modelController.dispose();
     _specController.dispose();
     _purchasePriceController.dispose();
     _retailPriceController.dispose();
@@ -68,173 +86,155 @@ class _AddProductScreenState extends State<AddProductScreen> {
     _bulkWholesalePriceController.dispose();
     _supplierController.dispose();
     _quantityController.dispose();
+    _warehouseController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 600;
-    return Shortcuts(
-      shortcuts: {
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyS):
-            const ActivateIntent(),
-      },
-      child: Actions(
-        actions: {
-          ActivateIntent: CallbackAction<ActivateIntent>(
-            onInvoke: (intent) => _confirmSave(),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_isEditing ? 'تعديل منتج' : 'إضافة منتج جديد'),
+        backgroundColor: Colors.blue,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.category),
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CategoriesScreen(),
+                ),
+              );
+              _loadCategories();
+            },
+            tooltip: 'إدارة الأصناف',
           ),
-        },
-        child: Scaffold(
-          body: Consumer<ProductProvider>(
-            builder: (context, provider, _) {
-              if (provider.isLoading) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (provider.errorMessage != null) {
-                return Center(child: Text('خطأ: ${provider.errorMessage}'));
-              }
-              return SingleChildScrollView(
-                padding: EdgeInsets.all(isMobile ? 16 : 32),
-                child: Center(
-                  child: Container(
-                    constraints: const BoxConstraints(maxWidth: 1000),
-                    child: Card(
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.all(isMobile ? 16 : 24),
-                        child: FocusScope(
-                          child: Form(
-                            key: _formKey,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _isEditing ? 'تعديل منتج' : 'إضافة منتج جديد',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineSmall
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: isMobile ? 24 : 32,
-                                      ),
+        ],
+      ),
+      body: Consumer<ProductProvider>(
+        builder: (context, provider, _) {
+          if (provider.isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          return SingleChildScrollView(
+            padding: EdgeInsets.all(isMobile ? 16 : 32),
+            child: Center(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 1200),
+                child: Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(isMobile ? 16 : 24),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'معلومات المنتج',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: isMobile ? 20 : 24,
                                 ),
-                                const SizedBox(height: 24),
-                                Text(
-                                  'معلومات المنتج',
-                                  style: Theme.of(context).textTheme.titleLarge
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: isMobile ? 20 : 24,
-                                      ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // الصف الأول: الاسم، الصنف، المخزن، المورد
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildTextField(
+                                  _nameController,
+                                  'اسم المنتج',
+                                  Icons.shopping_bag,
+                                  validator: (value) =>
+                                      value == null || value.isEmpty
+                                      ? 'مطلوب'
+                                      : null,
                                 ),
-                                const SizedBox(height: 16),
-                                GridView.count(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  crossAxisCount: 2,
-                                  crossAxisSpacing: 24,
-                                  mainAxisSpacing: 24,
-                                  childAspectRatio: 5,
-                                  children: [
-                                    _buildTextField(
-                                      _nameController,
-                                      'اسم المنتج',
-                                      Icons.shopping_bag,
-                                      validator: (value) =>
-                                          value == null || value.isEmpty
-                                          ? 'الرجاء إدخال اسم المنتج'
-                                          : null,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  decoration: const InputDecoration(
+                                    labelText: 'الصنف',
+                                    border: OutlineInputBorder(),
+                                    prefixIcon: Icon(Icons.category),
+                                  ),
+                                  value: _selectedCategory,
+                                  items: [
+                                    const DropdownMenuItem(
+                                      value: null,
+                                      child: Text('-- اختر --'),
                                     ),
-                                    _buildTextField(
-                                      _modelController, // FIX: Added model field
-                                      'الصنف ',
-                                      Icons.category,
-                                    ),
-                                    _buildTextField(
-                                      _specController,
-                                      'المواصفات',
-                                      Icons.description,
-                                      keyboardType: TextInputType.multiline,
-                                    ),
-                                    _buildTextField(
-                                      _supplierController,
-                                      'اسم المورد',
-                                      Icons.store,
-                                      validator: (value) =>
-                                          value == null || value.isEmpty
-                                          ? 'الرجاء إدخال اسم المورد'
-                                          : null,
+                                    ..._categories.map(
+                                      (cat) => DropdownMenuItem(
+                                        value: cat,
+                                        child: Text(cat),
+                                      ),
                                     ),
                                   ],
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedCategory = value;
+                                    });
+                                  },
                                 ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildTextField(
+                                  _warehouseController,
+                                  'المخزن',
+                                  Icons.warehouse,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildTextField(
+                                  _supplierController,
+                                  'المورد',
+                                  Icons.store,
+                                  validator: (value) =>
+                                      value == null || value.isEmpty
+                                      ? 'مطلوب'
+                                      : null,
+                                ),
+                              ),
+                            ],
+                          ),
 
-                                const SizedBox(height: 24),
-                                Text(
-                                  'الأسعار',
-                                  style: Theme.of(context).textTheme.titleLarge
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: isMobile ? 20 : 24,
-                                      ),
+                          const SizedBox(height: 16),
+
+                          // الصف الثاني: الموديل، المواصفات، الكمية
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildTextField(
+                                  _modelController,
+                                  'الموديل',
+                                  Icons.devices,
                                 ),
-                                const SizedBox(height: 16),
-                                isMobile
-                                    ? Column(
-                                        children: [
-                                          _buildPriceField(
-                                            _purchasePriceController,
-                                            'سعر الشراء',
-                                          ),
-                                          const SizedBox(height: 12),
-                                          _buildPriceField(
-                                            _retailPriceController,
-                                            'سعر البيع (فردي)',
-                                          ),
-                                          const SizedBox(height: 12),
-                                          _buildPriceField(
-                                            _wholesalePriceController,
-                                            'سعر الجملة',
-                                          ),
-                                          const SizedBox(height: 12),
-                                          _buildPriceField(
-                                            _bulkWholesalePriceController,
-                                            'سعر جملة الجملة',
-                                          ),
-                                        ],
-                                      )
-                                    : GridView.count(
-                                        shrinkWrap: true,
-                                        physics:
-                                            const NeverScrollableScrollPhysics(),
-                                        crossAxisCount: 4,
-                                        crossAxisSpacing: 24,
-                                        mainAxisSpacing: 24,
-                                        childAspectRatio: 2,
-                                        children: [
-                                          _buildPriceField(
-                                            _purchasePriceController,
-                                            'سعر الشراء',
-                                          ),
-                                          _buildPriceField(
-                                            _retailPriceController,
-                                            'سعر البيع (فردي)',
-                                          ),
-                                          _buildPriceField(
-                                            _wholesalePriceController,
-                                            'سعر الجملة',
-                                          ),
-                                          _buildPriceField(
-                                            _bulkWholesalePriceController,
-                                            'سعر جملة الجملة',
-                                          ),
-                                        ],
-                                      ),
-                                const SizedBox(height: 24),
-                                _buildTextField(
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                flex: 2,
+                                child: _buildTextField(
+                                  _specController,
+                                  'المواصفات',
+                                  Icons.description,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildTextField(
                                   _quantityController,
                                   'الكمية',
                                   Icons.inventory,
@@ -242,77 +242,114 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                   validator: (value) {
                                     final qty = int.tryParse(value ?? '');
                                     if (qty == null || qty < 0) {
-                                      return 'الرجاء إدخال كمية صالحة (رقم إيجابي)';
+                                      return 'رقم إيجابي';
                                     }
                                     return null;
                                   },
                                 ),
-                                const SizedBox(height: 24),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    MouseRegion(
-                                      onEnter: (_) =>
-                                          setState(() => _isSaveHovered = true),
-                                      onExit: (_) => setState(
-                                        () => _isSaveHovered = false,
-                                      ),
-                                      child: Semantics(
-                                        label: 'حفظ المنتج',
-                                        child: ElevatedButton.icon(
-                                          onPressed: _isSaving
-                                              ? null
-                                              : _confirmSave,
-                                          icon: _isSaving
-                                              ? const CircularProgressIndicator()
-                                              : const Icon(Icons.save),
-                                          label: const Text('حفظ'),
-                                          style: ElevatedButton.styleFrom(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 24,
-                                              vertical: 12,
-                                            ),
-                                            backgroundColor: _isSaveHovered
-                                                ? Colors.green[700]
-                                                : Colors.green,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    MouseRegion(
-                                      onEnter: (_) => setState(() {}),
-                                      onExit: (_) => setState(() {}),
-                                      child: Semantics(
-                                        label: 'إلغاء',
-                                        child: OutlinedButton.icon(
-                                          onPressed: () =>
-                                              Navigator.pop(context),
-                                          icon: const Icon(Icons.cancel),
-                                          label: const Text('إلغاء'),
-                                          style: OutlinedButton.styleFrom(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 24,
-                                              vertical: 12,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                        ),
+
+                          const SizedBox(height: 24),
+                          Text(
+                            'الأسعار',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: isMobile ? 20 : 24,
+                                ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // صف الأسعار
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildPriceField(
+                                  _purchasePriceController,
+                                  'سعر الشراء',
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildPriceField(
+                                  _retailPriceController,
+                                  'سعر البيع (فردي)',
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildPriceField(
+                                  _wholesalePriceController,
+                                  'سعر الجملة',
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildPriceField(
+                                  _bulkWholesalePriceController,
+                                  'سعر جملة الجملة',
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 24),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              MouseRegion(
+                                onEnter: (_) =>
+                                    setState(() => _isSaveHovered = true),
+                                onExit: (_) =>
+                                    setState(() => _isSaveHovered = false),
+                                child: ElevatedButton.icon(
+                                  onPressed: _isSaving ? null : _confirmSave,
+                                  icon: _isSaving
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : const Icon(Icons.save),
+                                  label: const Text('حفظ'),
+                                  style: ElevatedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 32,
+                                      vertical: 16,
+                                    ),
+                                    backgroundColor: _isSaveHovered
+                                        ? Colors.green[700]
+                                        : Colors.green,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              OutlinedButton.icon(
+                                onPressed: () => Navigator.pop(context),
+                                icon: const Icon(Icons.cancel),
+                                label: const Text('إلغاء'),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 32,
+                                    vertical: 16,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
-              );
-            },
-          ),
-        ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -322,7 +359,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     String label,
     IconData icon, {
     TextInputType keyboardType = TextInputType.text,
-    int? maxLines = 1,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
@@ -331,12 +367,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
         labelText: label,
         prefixIcon: Icon(icon),
         border: const OutlineInputBorder(),
-        focusedBorder: OutlineInputBorder(
+        focusedBorder: const OutlineInputBorder(
           borderSide: BorderSide(color: Colors.blue, width: 2),
         ),
       ),
       keyboardType: keyboardType,
-      maxLines: maxLines,
       validator: validator,
     );
   }
@@ -348,23 +383,15 @@ class _AddProductScreenState extends State<AddProductScreen> {
         labelText: label,
         prefixIcon: const Icon(Icons.attach_money),
         border: const OutlineInputBorder(),
-        focusedBorder: OutlineInputBorder(
+        focusedBorder: const OutlineInputBorder(
           borderSide: BorderSide(color: Colors.blue, width: 2),
         ),
       ),
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'الرجاء إدخال $label';
-        }
+        if (value == null || value.isEmpty) return 'مطلوب';
         final price = double.tryParse(value);
-        if (price == null) {
-          return 'الرجاء إدخال رقم صحيح';
-        }
-        // FIX: Validate that price is positive (greater than 0)
-        if (price <= 0) {
-          return 'الرجاء إدخال سعر موجب (أكبر من 0)';
-        }
+        if (price == null || price <= 0) return 'سعر موجب';
         return null;
       },
     );
@@ -377,9 +404,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         builder: (context) => AlertDialog(
           title: Text(_isEditing ? 'تأكيد التعديل' : 'تأكيد الإضافة'),
           content: Text(
-            _isEditing
-                ? 'هل تريد حفظ التعديلات على المنتج؟'
-                : 'هل تريد إضافة المنتج؟',
+            _isEditing ? 'هل تريد حفظ التعديلات؟' : 'هل تريد إضافة المنتج؟',
           ),
           actions: [
             TextButton(
@@ -401,12 +426,15 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   void _saveProduct() async {
     setState(() => _isSaving = true);
+
     final product = Product(
       id: widget.product?.id,
       name: _nameController.text,
-      model: _modelController.text.isEmpty
+      category: _selectedCategory,
+      warehouse: _warehouseController.text.isEmpty
           ? null
-          : _modelController.text, // FIX: Handle model field
+          : _warehouseController.text,
+      model: _modelController.text.isEmpty ? null : _modelController.text,
       specifications: _specController.text.isEmpty
           ? null
           : _specController.text,
@@ -417,6 +445,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       supplierName: _supplierController.text,
       quantity: int.parse(_quantityController.text),
     );
+
     final provider = Provider.of<ProductProvider>(context, listen: false);
     try {
       if (_isEditing) {
@@ -429,9 +458,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('تم إضافة المنتج بنجاح')));
-        // Clear form after adding new product
         _nameController.clear();
-        _modelController.clear(); // FIX: Clear model field
+        _modelController.clear();
         _specController.clear();
         _purchasePriceController.clear();
         _retailPriceController.clear();
@@ -439,6 +467,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
         _bulkWholesalePriceController.clear();
         _supplierController.clear();
         _quantityController.clear();
+        _warehouseController.clear();
+        setState(() => _selectedCategory = null);
       }
       Navigator.pop(context);
     } catch (e) {
@@ -446,7 +476,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text('خطأ: $e')));
     } finally {
-      // FIX: Always clear loading state
       setState(() => _isSaving = false);
     }
   }

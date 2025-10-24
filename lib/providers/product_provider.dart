@@ -211,10 +211,11 @@ class ProductProvider with ChangeNotifier {
     }
   }
 
-  Future<void> sellProduct(
+  Future<void> sellProductWithCustomPrice(
     Product product,
     int quantitySold,
     String customerName,
+    double customPrice,
     String? notes,
   ) async {
     try {
@@ -237,20 +238,21 @@ class ProductProvider with ChangeNotifier {
       if (customerName.isEmpty) {
         throw Exception('اسم العميل مطلوب');
       }
+      if (customPrice <= 0) {
+        throw Exception('السعر يجب أن يكون أكبر من 0');
+      }
 
       final db = await dbHelper.database;
 
       try {
         await db.transaction((txn) async {
-          final priceType = product.getPriceType(quantitySold);
-          final unitPrice = product.getPrice(quantitySold);
           final newQuantity = product.quantity - quantitySold;
 
           final sale = SaleTransaction(
             productId: product.id!,
             productName: product.name,
-            priceType: priceType,
-            unitPrice: unitPrice,
+            priceType: 'سعر مخصص',
+            unitPrice: customPrice,
             purchasePrice: product.purchasePrice,
             quantitySold: quantitySold,
             quantityRemainingInStock: newQuantity,
@@ -260,7 +262,7 @@ class ProductProvider with ChangeNotifier {
             notes: notes,
           );
 
-          debugPrint('Inserting sale: ${sale.toMap()}');
+          debugPrint('Inserting sale with custom price: ${sale.toMap()}');
           final saleId = await txn.insert('sales', sale.toMap());
           if (saleId == 0) {
             throw Exception('فشل في إدراج البيع في قاعدة البيانات');
@@ -298,7 +300,7 @@ class ProductProvider with ChangeNotifier {
             quantityChange: -quantitySold,
             quantityAfter: newQuantity,
             relatedSaleId: saleId.toString(),
-            notes: 'بيع لـ $customerName',
+            notes: 'بيع لـ $customerName بسعر $customPrice',
             dateTime: DateTime.now(),
           );
 
@@ -320,7 +322,7 @@ class ProductProvider with ChangeNotifier {
       _errorMessage = null;
       notifyListeners();
     } catch (e) {
-      debugPrint('Error selling product: $e');
+      debugPrint('Error selling product with custom price: $e');
       _errorMessage = 'فشل في تسجيل البيع: $e';
       notifyListeners();
       rethrow;

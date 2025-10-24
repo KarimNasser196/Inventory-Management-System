@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 class Product {
   final int? id;
   final String name;
+  final String? category;
+  final String? warehouse;
   final String? model;
   final String? specifications;
   final double purchasePrice;
@@ -17,6 +19,8 @@ class Product {
   Product({
     this.id,
     required this.name,
+    this.category,
+    this.warehouse,
     this.model,
     this.specifications,
     required this.purchasePrice,
@@ -33,6 +37,8 @@ class Product {
     return Product(
       id: map['id'] as int?,
       name: map['name'] as String,
+      category: map['category'] as String?,
+      warehouse: map['warehouse'] as String?,
       model: map['model'] as String?,
       specifications: map['specifications'] as String?,
       purchasePrice: (map['purchasePrice'] as num).toDouble(),
@@ -50,6 +56,8 @@ class Product {
     return {
       'id': id,
       'name': name,
+      'category': category,
+      'warehouse': warehouse,
       'model': model,
       'specifications': specifications,
       'purchasePrice': purchasePrice,
@@ -66,6 +74,8 @@ class Product {
   Product copyWith({
     int? id,
     String? name,
+    String? category,
+    String? warehouse,
     String? model,
     String? specifications,
     double? purchasePrice,
@@ -80,6 +90,8 @@ class Product {
     return Product(
       id: id ?? this.id,
       name: name ?? this.name,
+      category: category ?? this.category,
+      warehouse: warehouse ?? this.warehouse,
       model: model ?? this.model,
       specifications: specifications ?? this.specifications,
       purchasePrice: purchasePrice ?? this.purchasePrice,
