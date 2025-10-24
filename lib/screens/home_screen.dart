@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:soundtry/screens/maintenance_screen.dart';
 import 'package:soundtry/screens/setting%20_screen.dart';
 import '../providers/navigation_provider.dart';
 import 'add_product_screen.dart';
@@ -24,6 +25,7 @@ class HomeScreen extends StatelessWidget {
       const SellProductScreen(),
       const ReturnProductScreen(),
       const ReportsScreen(),
+      const MaintenanceScreen(), // أضف هذا السطر
       const SettingsScreen(),
     ];
 
@@ -69,6 +71,11 @@ class HomeScreen extends StatelessWidget {
                   icon: Icon(Icons.bar_chart),
                   selectedIcon: Icon(Icons.bar_chart_outlined),
                   label: Text('التقارير'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.build),
+                  selectedIcon: Icon(Icons.build_circle),
+                  label: Text('الصيانة'),
                 ),
                 NavigationRailDestination(
                   icon: Icon(Icons.settings),
@@ -123,6 +130,10 @@ class HomeScreen extends StatelessWidget {
                 BottomNavigationBarItem(
                   icon: Icon(Icons.bar_chart),
                   label: 'التقارير',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.build),
+                  label: 'الصيانة',
                 ),
                 BottomNavigationBarItem(
                   icon: Icon(Icons.settings),
