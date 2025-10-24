@@ -1,3 +1,5 @@
+// lib/screens/sell_product_screen.dart - WITH RETURN COUNTER
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -7,7 +9,6 @@ import '../models/sale_transaction.dart';
 
 class SellProductScreen extends StatefulWidget {
   const SellProductScreen({super.key});
-
   @override
   State<SellProductScreen> createState() => _SellProductScreenState();
 }
@@ -131,7 +132,7 @@ class _SellProductScreenState extends State<SellProductScreen> {
                             : isMobile
                             ? _buildSalesList(
                                 context,
-                                provider.getRecentSales(limit: 5),
+                                provider.getRecentSales(limit: 10),
                               )
                             : GridView.builder(
                                 shrinkWrap: true,
@@ -144,13 +145,17 @@ class _SellProductScreenState extends State<SellProductScreen> {
                                       childAspectRatio: 3,
                                     ),
                                 itemCount: provider
-                                    .getRecentSales(limit: 5)
+                                    .getRecentSales(limit: 10)
                                     .length,
                                 itemBuilder: (context, index) {
                                   final sale = provider.getRecentSales(
-                                    limit: 5,
+                                    limit: 10,
                                   )[index];
-                                  return _buildSaleCard(context, sale);
+                                  return _buildSaleCard(
+                                    context,
+                                    sale,
+                                    provider,
+                                  );
                                 },
                               ),
                       ],
@@ -326,7 +331,11 @@ class _SellProductScreenState extends State<SellProductScreen> {
             child: ElevatedButton.icon(
               onPressed: _isSelling ? null : _confirmSell,
               icon: _isSelling
-                  ? const CircularProgressIndicator()
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Icon(Icons.sell),
               label: const Text('تسجيل البيع'),
               style: ElevatedButton.styleFrom(
@@ -339,136 +348,316 @@ class _SellProductScreenState extends State<SellProductScreen> {
             ),
           ),
           const SizedBox(width: 16),
-          MouseRegion(
-            onEnter: (_) => setState(() {}),
-            onExit: (_) => setState(() {}),
-            child: OutlinedButton.icon(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.cancel),
-              label: const Text('إلغاء'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     ];
   }
 
-  Widget _buildSaleCard(BuildContext context, SaleTransaction sale) {
+  Widget _buildSaleCard(
+    BuildContext context,
+    SaleTransaction sale,
+    ProductProvider provider,
+  ) {
+    // حساب عدد الاسترجاعات لهذا البيع
+    final returnCount = provider.inventoryTransactions
+        .where(
+          (tx) =>
+              tx.transactionType == 'استرجاع من بيع' &&
+              tx.relatedSaleId == sale.id.toString(),
+        )
+        .length;
+
+    final totalReturned = provider.inventoryTransactions
+        .where(
+          (tx) =>
+              tx.transactionType == 'استرجاع من بيع' &&
+              tx.relatedSaleId == sale.id.toString(),
+        )
+        .fold<int>(0, (sum, tx) => sum + tx.quantityChange);
+
     return Card(
       elevation: 4,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: () {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: Text('تفاصيل البيع: ${sale.productName}'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildDetailItem('المنتج', sale.productName),
-                  _buildDetailItem('الكمية', '${sale.quantitySold}'),
-                  _buildDetailItem('اسم العميل', sale.customerName),
-                  _buildDetailItem('نوع السعر', sale.priceType),
-                  _buildDetailItem(
-                    'سعر الوحدة',
-                    '${sale.unitPrice.toStringAsFixed(2)} جنيه',
+      child: Column(
+        children: [
+          Expanded(
+            child: InkWell(
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: Text('تفاصيل البيع: ${sale.productName}'),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildDetailItem('المنتج', sale.productName),
+                        _buildDetailItem(
+                          'الكمية المباعة',
+                          '${sale.quantitySold}',
+                        ),
+                        _buildDetailItem('اسم العميل', sale.customerName),
+                        _buildDetailItem('نوع السعر', sale.priceType),
+                        _buildDetailItem(
+                          'سعر الوحدة',
+                          '${sale.unitPrice.toStringAsFixed(2)} جنيه',
+                        ),
+                        _buildDetailItem(
+                          'الإجمالي',
+                          '${sale.totalAmount.toStringAsFixed(2)} جنيه',
+                        ),
+                        if (returnCount > 0) ...[
+                          const Divider(),
+                          _buildDetailItem('عدد الاسترجاعات', '$returnCount'),
+                          _buildDetailItem('إجمالي المسترجع', '$totalReturned'),
+                        ],
+                        if (sale.notes != null)
+                          _buildDetailItem('ملاحظات', sale.notes!),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('إغلاق'),
+                      ),
+                    ],
                   ),
-                  _buildDetailItem(
-                    'الإجمالي',
-                    '${sale.totalAmount.toStringAsFixed(2)} جنيه',
-                  ),
-                  if (sale.notes != null)
-                    _buildDetailItem('ملاحظات', sale.notes!),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('إغلاق'),
-                ),
-              ],
-            ),
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: _getPriceTypeColor(sale.priceType),
-                child: Text(
-                  sale.priceType == 'فردي'
-                      ? 'ف'
-                      : sale.priceType == 'جملة'
-                      ? 'ج'
-                      : 'جج',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
                   children: [
-                    Text(
-                      sale.productName,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                    CircleAvatar(
+                      backgroundColor: _getPriceTypeColor(sale.priceType),
+                      child: Text(
+                        sale.priceType == 'فردي'
+                            ? 'ف'
+                            : sale.priceType == 'جملة'
+                            ? 'ج'
+                            : 'جج',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                    Text(
-                      '${sale.customerName} • ${sale.getFormattedDateTime()}',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            sale.productName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          Text(
+                            '${sale.customerName} • ${sale.getFormattedDateTime()}',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 14,
+                            ),
+                          ),
+                          // عرض معلومات الاسترجاع
+                          if (returnCount > 0)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                'تم استرجاع $totalReturned ',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'الكمية: ${sale.quantitySold}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Text(
+                          '${sale.priceType}: ${sale.unitPrice.toStringAsFixed(2)} جنيه',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    'الكمية: ${sale.quantitySold}',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Text(
-                    '${sale.priceType}: ${sale.unitPrice.toStringAsFixed(2)} جنيه',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.green,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
+          Container(
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: Colors.grey[300]!)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextButton.icon(
+                    onPressed: () => _showReturnDialog(context, sale, provider),
+                    icon: const Icon(Icons.reply, color: Colors.orange),
+                    label: const Text(
+                      'استرجاع',
+                      style: TextStyle(color: Colors.orange),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showReturnDialog(
+    BuildContext context,
+    SaleTransaction sale,
+    ProductProvider provider,
+  ) {
+    int returnQuantity = 1;
+    String returnReason = '';
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('استرجاع المنتج'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'المنتج: ${sale.productName}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  'الكمية المباعة: ${sale.quantitySold}',
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: 'كمية الاسترجاع',
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.format_list_numbered),
+                    helperText: 'من 1 إلى ${sale.quantitySold}',
+                  ),
+                  keyboardType: TextInputType.number,
+                  onChanged: (value) {
+                    returnQuantity = int.tryParse(value) ?? 1;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: 'سبب الاسترجاع',
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.warning),
+                    hintText: 'مثال: عيب في المنتج، عدم رضا العميل، إلخ',
+                  ),
+                  maxLines: 2,
+                  onChanged: (value) {
+                    returnReason = value;
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                if (returnQuantity <= 0 || returnQuantity > sale.quantitySold) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'الكمية يجب أن تكون بين 1 و ${sale.quantitySold}',
+                      ),
+                    ),
+                  );
+                  return;
+                }
+
+                if (returnReason.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('يرجى إدخال سبب الاسترجاع')),
+                  );
+                  return;
+                }
+
+                try {
+                  await provider.returnSale(
+                    sale.id!,
+                    returnQuantity,
+                    returnReason,
+                  );
+
+                  Navigator.pop(context);
+
+                  String message = returnQuantity == sale.quantitySold
+                      ? 'تم حذف البيع من السجلات نهائياً'
+                      : 'تم استرجاع $returnQuantity من ${sale.productName}';
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(message),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('خطأ: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+              icon: const Icon(Icons.reply),
+              label: const Text('تأكيد الاسترجاع'),
+            ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildSalesList(BuildContext context, List<SaleTransaction> sales) {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: sales.length,
-      itemBuilder: (context, index) => _buildSaleCard(context, sales[index]),
+    return Consumer<ProductProvider>(
+      builder: (context, provider, _) {
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: sales.length,
+          itemBuilder: (context, index) =>
+              _buildSaleCard(context, sales[index], provider),
+        );
+      },
     );
   }
 
@@ -536,55 +725,11 @@ class _SellProductScreenState extends State<SellProductScreen> {
         _customerName,
         _notes,
       );
-      Navigator.pop(context); // Close loading dialog
+      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             'تم تسجيل البيع بنجاح للمنتج ${_selectedProduct!.name}',
-          ),
-          action: SnackBarAction(
-            label: 'عرض التفاصيل',
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('تفاصيل البيع'),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildDetailItem('المنتج', _selectedProduct!.name),
-                      _buildDetailItem('الكمية', '$_quantity'),
-                      _buildDetailItem('اسم العميل', _customerName),
-                      _buildDetailItem('نوع السعر', _priceType),
-                      _buildDetailItem(
-                        'سعر الوحدة',
-                        '${(_priceType == 'فردي'
-                            ? _selectedProduct!.retailPrice
-                            : _priceType == 'جملة'
-                            ? _selectedProduct!.wholesalePrice
-                            : _selectedProduct!.bulkWholesalePrice).toStringAsFixed(2)} جنيه',
-                      ),
-                      _buildDetailItem(
-                        'الإجمالي',
-                        '${(_priceType == 'فردي'
-                                ? _selectedProduct!.retailPrice
-                                : _priceType == 'جملة'
-                                ? _selectedProduct!.wholesalePrice
-                                : _selectedProduct!.bulkWholesalePrice) * _quantity} جنيه',
-                      ),
-                      if (_notes != null) _buildDetailItem('ملاحظات', _notes!),
-                    ],
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('إغلاق'),
-                    ),
-                  ],
-                ),
-              );
-            },
           ),
         ),
       );
@@ -595,23 +740,13 @@ class _SellProductScreenState extends State<SellProductScreen> {
         _customerName = '';
         _notes = null;
         _priceType = 'فردي';
+        _isSelling = false;
       });
     } catch (e) {
-      Navigator.pop(context); // Close loading dialog
-      String errorMessage = 'خطأ أثناء تسجيل البيع';
-      if (e.toString().contains('المنتج غير موجود')) {
-        errorMessage = 'المنتج غير موجود في قاعدة البيانات';
-      } else if (e.toString().contains('الكمية المطلوبة أكثر من المتاح')) {
-        errorMessage = 'الكمية المطلوبة أكبر من المخزون المتاح';
-      } else if (e.toString().contains('فشل في تحديث كمية المنتج')) {
-        errorMessage = 'فشل في تحديث كمية المنتج، تحقق من البيانات';
-      } else {
-        errorMessage = 'خطأ: $e';
-      }
+      Navigator.pop(context);
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(errorMessage)));
-    } finally {
+      ).showSnackBar(SnackBar(content: Text('خطأ: $e')));
       setState(() => _isSelling = false);
     }
   }

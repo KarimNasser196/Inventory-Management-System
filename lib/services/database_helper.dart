@@ -553,4 +553,37 @@ FROM sales s
     _database = null;
     debugPrint('Database closed');
   }
+
+  Future<int> updateSale(int saleId, Map<String, dynamic> saleData) async {
+    final db = await database;
+    try {
+      final result = await db.update(
+        'sales',
+        saleData,
+        where: 'id = ?',
+        whereArgs: [saleId],
+      );
+      debugPrint('Updated sale id $saleId: $result row(s) affected');
+      return result;
+    } catch (e) {
+      debugPrint('Error updating sale: $e');
+      return 0;
+    }
+  }
+
+  Future<int> deleteSale(int saleId) async {
+    final db = await database;
+    try {
+      final result = await db.delete(
+        'sales',
+        where: 'id = ?',
+        whereArgs: [saleId],
+      );
+      debugPrint('Deleted sale id $saleId: $result row(s) affected');
+      return result;
+    } catch (e) {
+      debugPrint('Error deleting sale: $e');
+      return 0;
+    }
+  }
 }

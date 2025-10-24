@@ -1,5 +1,8 @@
+// lib/screens/home_screen.dart (FIXED)
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:soundtry/screens/setting%20_screen.dart';
 import '../providers/navigation_provider.dart';
 import 'add_product_screen.dart';
 import 'sell_product_screen.dart';
@@ -21,6 +24,7 @@ class HomeScreen extends StatelessWidget {
       const SellProductScreen(),
       const ReturnProductScreen(),
       const ReportsScreen(),
+      const SettingsScreen(),
     ];
 
     return Scaffold(
@@ -81,6 +85,11 @@ class HomeScreen extends StatelessWidget {
                   selectedIcon: Icon(Icons.bar_chart_outlined),
                   label: Text('التقارير'),
                 ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.settings),
+                  selectedIcon: Icon(Icons.settings_outlined),
+                  label: Text('الإعدادات'),
+                ),
               ],
             ),
           // المحتوى الرئيسي
@@ -88,11 +97,14 @@ class HomeScreen extends StatelessWidget {
             child: Builder(
               builder: (context) {
                 try {
-                  return screens[navigationProvider.selectedIndex];
+                  final index = navigationProvider.selectedIndex;
+                  // FIX: Check bounds before accessing screens list
+                  if (index < 0 || index >= screens.length) {
+                    return const Center(child: Text('صفحة غير متاحة'));
+                  }
+                  return screens[index];
                 } catch (e, stackTrace) {
-                  debugPrint(
-                    'Error rendering screen ${navigationProvider.selectedIndex}: $e\n$stackTrace',
-                  );
+                  debugPrint('Error rendering screen: $e\n$stackTrace');
                   return Center(child: Text('خطأ في تحميل الصفحة: $e'));
                 }
               },
@@ -126,6 +138,10 @@ class HomeScreen extends StatelessWidget {
                 BottomNavigationBarItem(
                   icon: Icon(Icons.bar_chart),
                   label: 'التقارير',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.settings),
+                  label: 'الإعدادات',
                 ),
               ],
             )

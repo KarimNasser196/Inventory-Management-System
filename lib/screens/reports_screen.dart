@@ -1,3 +1,5 @@
+// lib/screens/reports_screen.dart (FIXED - Product & Sales Report)
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -17,7 +19,7 @@ class _ReportsScreenState extends State<ReportsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -41,9 +43,8 @@ class _ReportsScreenState extends State<ReportsScreen>
               unselectedLabelColor: Colors.white70,
               indicatorColor: Colors.white,
               tabs: const [
-                Tab(icon: Icon(Icons.dashboard), text: 'لوحة التحكم'),
-                Tab(icon: Icon(Icons.receipt_long), text: 'المبيعات'),
-                Tab(icon: Icon(Icons.history), text: 'حركة المخزون'),
+                Tab(icon: Icon(Icons.inventory), text: 'تقرير المنتجات'),
+                Tab(icon: Icon(Icons.receipt_long), text: 'حركة المخزون'),
               ],
             ),
           ),
@@ -51,11 +52,7 @@ class _ReportsScreenState extends State<ReportsScreen>
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: const [
-                DashboardTab(),
-                SalesTab(),
-                InventoryTransactionsTab(),
-              ],
+              children: const [ProductsReportTab(), InventoryMovementTab()],
             ),
           ),
         ],
@@ -64,139 +61,51 @@ class _ReportsScreenState extends State<ReportsScreen>
   }
 }
 
-// ==================== لوحة التحكم ====================
-class DashboardTab extends StatelessWidget {
-  const DashboardTab({super.key});
+// ==================== تقرير المنتجات ====================
+class ProductsReportTab extends StatelessWidget {
+  const ProductsReportTab({super.key});
 
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 600;
     return Consumer<ProductProvider>(
       builder: (context, provider, _) {
-        final totalProfit = provider.calculateTotalProfit();
-        final totalSalesAmount = provider.sales.fold<double>(
-          0,
-          (sum, sale) => sum + sale.totalAmount,
-        );
+        if (provider.products.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.inventory, size: 64, color: Colors.grey),
+                SizedBox(height: 16),
+                Text('لا توجد منتجات'),
+              ],
+            ),
+          );
+        }
+
         return SingleChildScrollView(
-          padding: EdgeInsets.all(isMobile ? 16 : 32),
+          padding: EdgeInsets.all(isMobile ? 16 : 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'الملخص العام',
+                'تقرير المنتجات',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                   fontSize: isMobile ? 24 : 32,
                 ),
               ),
-              const SizedBox(height: 24),
-              // بطاقات الإحصائيات
-              isMobile
-                  ? Column(
-                      children: [
-                        _buildStatCard(
-                          'إجمالي المنتجات',
-                          '${provider.totalProducts}',
-                          Icons.inventory,
-                          Colors.blue,
-                        ),
-                        const SizedBox(height: 12),
-                        _buildStatCard(
-                          'إجمالي الكميات',
-                          '${provider.totalQuantityInStock}',
-                          Icons.storage,
-                          Colors.green,
-                        ),
-                        const SizedBox(height: 12),
-                        _buildStatCard(
-                          'إجمالي المبيعات',
-                          '${totalSalesAmount.toStringAsFixed(2)} جنيه',
-                          Icons.attach_money,
-                          Colors.orange,
-                        ),
-                        const SizedBox(height: 12),
-                        _buildStatCard(
-                          'إجمالي الأرباح',
-                          '${totalProfit.toStringAsFixed(2)} جنيه',
-                          Icons.trending_up,
-                          Colors.purple,
-                        ),
-                      ],
-                    )
-                  : GridView.count(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      crossAxisCount: 4,
-                      mainAxisSpacing: 24,
-                      crossAxisSpacing: 24,
-                      childAspectRatio: 1.5,
-                      children: [
-                        _buildStatCard(
-                          'إجمالي المنتجات',
-                          '${provider.totalProducts}',
-                          Icons.inventory,
-                          Colors.blue,
-                        ),
-                        _buildStatCard(
-                          'إجمالي الكميات',
-                          '${provider.totalQuantityInStock}',
-                          Icons.storage,
-                          Colors.green,
-                        ),
-                        _buildStatCard(
-                          'إجمالي المبيعات',
-                          '${totalSalesAmount.toStringAsFixed(2)} جنيه',
-                          Icons.attach_money,
-                          Colors.orange,
-                        ),
-                        _buildStatCard(
-                          'إجمالي الأرباح',
-                          '${totalProfit.toStringAsFixed(2)} جنيه',
-                          Icons.trending_up,
-                          Colors.purple,
-                        ),
-                      ],
-                    ),
-              const SizedBox(height: 32),
-              // آخر المبيعات
+              const SizedBox(height: 8),
               Text(
-                'آخر المبيعات',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontSize: isMobile ? 20 : 24,
-                ),
+                'عدد المنتجات: ${provider.products.length}',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
               ),
-              const SizedBox(height: 16),
-              if (provider.sales.isEmpty)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(32),
-                    child: Text('لا توجد مبيعات بعد'),
-                  ),
-                )
-              else
-                isMobile
-                    ? _buildSalesList(
-                        context,
-                        provider.getRecentSales(limit: 5),
-                      )
-                    : GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 24,
-                              mainAxisSpacing: 24,
-                              childAspectRatio: 3,
-                            ),
-                        itemCount: provider.getRecentSales(limit: 5).length,
-                        itemBuilder: (context, index) {
-                          final sale = provider.getRecentSales(limit: 5)[index];
-                          return _buildSaleCard(context, sale);
-                        },
-                      ),
+              const SizedBox(height: 24),
+              isMobile
+                  ? _buildMobileProductsList(context, provider)
+                  : _buildDesktopProductsTable(context, provider),
             ],
           ),
         );
@@ -204,365 +113,172 @@ class DashboardTab extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
+  Widget _buildMobileProductsList(
+    BuildContext context,
+    ProductProvider provider,
   ) {
-    return Card(
-      elevation: 4,
-      child: InkWell(
-        onTap: () {},
-        onHover: (isHovering) {},
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 40, color: color),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                style: const TextStyle(fontSize: 14),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSaleCard(BuildContext context, dynamic sale) {
-    final profit = (sale.unitPrice - sale.purchasePrice) * sale.quantitySold;
-    return Card(
-      elevation: 4,
-      child: InkWell(
-        onTap: () {},
-        onHover: (isHovering) {},
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: Colors.green,
-                child: const Icon(Icons.shopping_cart, color: Colors.white),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      sale.productName,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    Text(
-                      '${sale.customerName} • ${sale.getFormattedDateTime()}',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                    ),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '${sale.totalAmount.toStringAsFixed(2)} جنيه',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
-                      fontSize: 16,
-                    ),
-                  ),
-                  Text(
-                    'ربح: ${profit.toStringAsFixed(2)}',
-                    style: TextStyle(fontSize: 12, color: Colors.orange[700]),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSalesList(BuildContext context, List<dynamic> sales) {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: sales.length,
-      itemBuilder: (context, index) => _buildSaleCard(context, sales[index]),
-    );
-  }
-}
+      itemCount: provider.products.length,
+      itemBuilder: (context, index) {
+        final product = provider.products[index];
+        final quantitySold = _calculateQuantitySold(provider, product.id!);
+        final quantityAvailable = product.quantity;
 
-// ==================== تقرير المبيعات ====================
-class SalesTab extends StatelessWidget {
-  const SalesTab({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 600;
-    return Consumer<ProductProvider>(
-      builder: (context, provider, _) {
-        if (provider.sales.isEmpty) {
-          return const Center(
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.receipt_long, size: 64, color: Colors.grey),
-                SizedBox(height: 16),
-                Text('لا توجد مبيعات بعد'),
+                Text(
+                  product.name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'المورد: ${product.supplierName}',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                ),
+                if (product.model != null && product.model!.isNotEmpty)
+                  Text(
+                    'النموذج: ${product.model}',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                  ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      Column(
+                        children: [
+                          Text(
+                            'الكمية المتاحة',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '$quantityAvailable',
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Column(
+                        children: [
+                          Text(
+                            'الكمية المباعة',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '$quantitySold',
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
-          );
-        }
-        return SingleChildScrollView(
-          padding: EdgeInsets.all(isMobile ? 16 : 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'جميع المبيعات (${provider.sales.length})',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontSize: isMobile ? 20 : 24,
-                ),
-              ),
-              const SizedBox(height: 16),
-              isMobile
-                  ? ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: provider.sales.length,
-                      itemBuilder: (context, index) {
-                        final sale = provider.sales[index];
-                        return _buildSaleExpansionTile(context, sale);
-                      },
-                    )
-                  : GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 24,
-                            mainAxisSpacing: 24,
-                            childAspectRatio: 3,
-                          ),
-                      itemCount: provider.sales.length,
-                      itemBuilder: (context, index) {
-                        final sale = provider.sales[index];
-                        return _buildSaleCard(context, sale);
-                      },
-                    ),
-            ],
           ),
         );
       },
     );
   }
 
-  Widget _buildSaleExpansionTile(BuildContext context, dynamic sale) {
-    final profit = (sale.unitPrice - sale.purchasePrice) * sale.quantitySold;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 4,
-      child: ExpansionTile(
-        leading: CircleAvatar(
-          backgroundColor: _getPriceTypeColor(sale.priceType),
-          child: Text(
-            sale.priceType == 'فردي'
-                ? 'ف'
-                : sale.priceType == 'جملة'
-                ? 'ج'
-                : 'جج',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        title: Text(
-          sale.productName,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text(
-          '${sale.customerName} • ${sale.getFormattedDateTime()}',
-          style: TextStyle(color: Colors.grey[600]),
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              '${sale.totalAmount.toStringAsFixed(2)} جنيه',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.green,
-                fontSize: 16,
-              ),
-            ),
-            Text(
-              'ربح: ${profit.toStringAsFixed(2)}',
-              style: TextStyle(fontSize: 12, color: Colors.orange[700]),
-            ),
-          ],
-        ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _buildDetailRow('نوع السعر', sale.priceType),
-                _buildDetailRow(
-                  'سعر الوحدة',
-                  '${sale.unitPrice.toStringAsFixed(2)} جنيه',
-                ),
-                _buildDetailRow('الكمية المباعة', '${sale.quantitySold}'),
-                _buildDetailRow(
-                  'الإجمالي',
-                  '${sale.totalAmount.toStringAsFixed(2)} جنيه',
-                ),
-                _buildDetailRow('المورد', sale.supplierName),
-                _buildDetailRow(
-                  'الكمية المتبقية',
-                  '${sale.quantityRemainingInStock}',
-                ),
-                if (sale.notes != null && sale.notes!.isNotEmpty)
-                  _buildDetailRow('ملاحظات', sale.notes!),
-              ],
-            ),
-          ),
+  Widget _buildDesktopProductsTable(
+    BuildContext context,
+    ProductProvider provider,
+  ) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        columns: const [
+          DataColumn(label: Text('اسم المنتج')),
+          DataColumn(label: Text('المورد')),
+          DataColumn(label: Text('النموذج')),
+          DataColumn(label: Text('الكمية المتاحة'), numeric: true),
+          DataColumn(label: Text('الكمية المباعة'), numeric: true),
+          DataColumn(label: Text('سعر الشراء')),
+          DataColumn(label: Text('سعر البيع')),
+          DataColumn(label: Text('سعر الجمله')),
+          DataColumn(label: Text('سعر جمله الجمله')),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSaleCard(BuildContext context, dynamic sale) {
-    final profit = (sale.unitPrice - sale.purchasePrice) * sale.quantitySold;
-    return Card(
-      elevation: 4,
-      child: InkWell(
-        onTap: () {},
-        onHover: (isHovering) {},
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: _getPriceTypeColor(sale.priceType),
-                child: Text(
-                  sale.priceType == 'فردي'
-                      ? 'ف'
-                      : sale.priceType == 'جملة'
-                      ? 'ج'
-                      : 'جج',
+        rows: provider.products.map((product) {
+          final quantitySold = _calculateQuantitySold(provider, product.id!);
+          return DataRow(
+            cells: [
+              DataCell(Text(product.name)),
+              DataCell(Text(product.supplierName)),
+              DataCell(Text(product.model ?? '-')),
+              DataCell(
+                Text(
+                  '${product.quantity}',
                   style: const TextStyle(
-                    color: Colors.white,
                     fontWeight: FontWeight.bold,
+                    color: Colors.blue,
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      sale.productName,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    Text(
-                      '${sale.customerName} • ${sale.getFormattedDateTime()}',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                    ),
-                  ],
+              DataCell(
+                Text(
+                  '$quantitySold',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
                 ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '${sale.totalAmount.toStringAsFixed(2)} جنيه',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
-                      fontSize: 16,
-                    ),
-                  ),
-                  Text(
-                    'ربح: ${profit.toStringAsFixed(2)}',
-                    style: TextStyle(fontSize: 12, color: Colors.orange[700]),
-                  ),
-                ],
-              ),
+              DataCell(Text(product.purchasePrice.toStringAsFixed(2))),
+              DataCell(Text(product.retailPrice.toStringAsFixed(2))),
+              DataCell(Text(product.wholesalePrice.toStringAsFixed(2))),
+              DataCell(Text(product.bulkWholesalePrice.toStringAsFixed(2))),
             ],
-          ),
-        ),
+          );
+        }).toList(),
       ),
     );
   }
 
-  Color _getPriceTypeColor(String priceType) {
-    switch (priceType) {
-      case 'فردي':
-        return Colors.blue;
-      case 'جملة':
-        return Colors.orange;
-      case 'جملة جملة':
-        return Colors.purple;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              '$label:',
-              style: TextStyle(color: Colors.grey[600], fontSize: 14),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
-            ),
-          ),
-        ],
-      ),
-    );
+  int _calculateQuantitySold(ProductProvider provider, int productId) {
+    return provider.sales
+        .where((sale) => sale.productId == productId)
+        .fold<int>(0, (sum, sale) => sum + sale.quantitySold);
   }
 }
 
 // ==================== حركة المخزون ====================
-class InventoryTransactionsTab extends StatelessWidget {
-  const InventoryTransactionsTab({super.key});
+class InventoryMovementTab extends StatelessWidget {
+  const InventoryMovementTab({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -581,47 +297,30 @@ class InventoryTransactionsTab extends StatelessWidget {
             ),
           );
         }
+
         return SingleChildScrollView(
-          padding: EdgeInsets.all(isMobile ? 16 : 32),
+          padding: EdgeInsets.all(isMobile ? 16 : 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'حركة المخزون (${provider.inventoryTransactions.length})',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                'حركة المخزون',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
-                  fontSize: isMobile ? 20 : 24,
+                  fontSize: isMobile ? 24 : 32,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
+              Text(
+                'عدد الحركات: ${provider.inventoryTransactions.length}',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 24),
               isMobile
-                  ? ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: provider.inventoryTransactions.length,
-                      itemBuilder: (context, index) {
-                        final transaction =
-                            provider.inventoryTransactions[index];
-                        return _buildTransactionCard(context, transaction);
-                      },
-                    )
-                  : GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 24,
-                            mainAxisSpacing: 24,
-                            childAspectRatio: 3,
-                          ),
-                      itemCount: provider.inventoryTransactions.length,
-                      itemBuilder: (context, index) {
-                        final transaction =
-                            provider.inventoryTransactions[index];
-                        return _buildTransactionCard(context, transaction);
-                      },
-                    ),
+                  ? _buildMobileTransactionsList(context, provider)
+                  : _buildDesktopTransactionsTable(context, provider),
             ],
           ),
         );
@@ -629,80 +328,169 @@ class InventoryTransactionsTab extends StatelessWidget {
     );
   }
 
-  Widget _buildTransactionCard(BuildContext context, dynamic transaction) {
-    final isPositive = transaction.quantityChange > 0;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 4,
-      child: InkWell(
-        onTap: () {},
-        onHover: (isHovering) {},
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: isPositive ? Colors.green : Colors.red,
-                child: Icon(
-                  isPositive ? Icons.add : Icons.remove,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildMobileTransactionsList(
+    BuildContext context,
+    ProductProvider provider,
+  ) {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: provider.inventoryTransactions.length,
+      itemBuilder: (context, index) {
+        final transaction = provider.inventoryTransactions[index];
+        final isPositive = transaction.quantityChange > 0;
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Text(
-                      transaction.productName,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                    CircleAvatar(
+                      backgroundColor: isPositive ? Colors.green : Colors.red,
+                      child: Icon(
+                        isPositive ? Icons.add : Icons.remove,
+                        color: Colors.white,
                       ),
                     ),
-                    Text(
-                      transaction.transactionType,
-                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                    ),
-                    Text(
-                      DateFormat(
-                        'yyyy-MM-dd HH:mm',
-                      ).format(transaction.dateTime),
-                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                    ),
-                    if (transaction.notes != null &&
-                        transaction.notes!.isNotEmpty)
-                      Text(
-                        transaction.notes!,
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 12,
-                          fontStyle: FontStyle.italic,
-                        ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            transaction.productName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          Text(
+                            transaction.transactionType,
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
                       ),
+                    ),
                   ],
                 ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '${isPositive ? '+' : ''}${transaction.quantityChange}',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: isPositive ? Colors.green : Colors.red,
-                    ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  Text(
-                    'متبقي: ${transaction.quantityAfter}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'التغيير: ${isPositive ? '+' : ''}${transaction.quantityChange}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: isPositive ? Colors.green : Colors.red,
+                              fontSize: 16,
+                            ),
+                          ),
+                          Text(
+                            'المتبقي: ${transaction.quantityAfter}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        DateFormat(
+                          'yyyy-MM-dd HH:mm',
+                        ).format(transaction.dateTime),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                      ),
+                      if (transaction.notes != null &&
+                          transaction.notes!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            'ملاحظات: ${transaction.notes}',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 12,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
-        ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDesktopTransactionsTable(
+    BuildContext context,
+    ProductProvider provider,
+  ) {
+    return SingleChildScrollView(
+      reverse: false,
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        columns: const [
+          DataColumn(label: Text('المنتج')),
+          DataColumn(label: Text('نوع العملية')),
+          DataColumn(label: Text('التغيير'), numeric: true),
+          DataColumn(label: Text('المتبقي'), numeric: true),
+          DataColumn(label: Text('التاريخ')),
+          DataColumn(label: Text('الملاحظات')),
+        ],
+        rows: provider.inventoryTransactions.map((transaction) {
+          final isPositive = transaction.quantityChange > 0;
+          return DataRow(
+            cells: [
+              DataCell(Text(transaction.productName)),
+              DataCell(Text(transaction.transactionType)),
+              DataCell(
+                Text(
+                  '${isPositive ? '+' : ''}${transaction.quantityChange}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: isPositive ? Colors.green : Colors.red,
+                  ),
+                ),
+              ),
+              DataCell(
+                Text(
+                  '${transaction.quantityAfter}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              DataCell(
+                Text(
+                  DateFormat('yyyy-MM-dd HH:mm').format(transaction.dateTime),
+                ),
+              ),
+              DataCell(Text(transaction.notes ?? '-')),
+            ],
+          );
+        }).toList(),
       ),
     );
   }

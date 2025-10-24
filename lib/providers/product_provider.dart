@@ -1,3 +1,5 @@
+// lib/providers/product_provider.dart (FIXED - No Build Phase Issues)
+
 import 'package:flutter/foundation.dart';
 import '../models/product.dart';
 import '../models/sale_transaction.dart';
@@ -11,6 +13,7 @@ class ProductProvider with ChangeNotifier {
   bool _isLoading = false;
   String _searchQuery = '';
   String? _errorMessage;
+  bool _isInitialized = false;
 
   List<Product> get products => _searchQuery.isEmpty
       ? _products
@@ -28,6 +31,7 @@ class ProductProvider with ChangeNotifier {
       _inventoryTransactions;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  bool get isInitialized => _isInitialized;
   int get totalProducts => _products.length;
   int get totalQuantityInStock =>
       _products.fold<int>(0, (sum, p) => sum + p.quantity);
@@ -37,9 +41,31 @@ class ProductProvider with ChangeNotifier {
   );
 
   ProductProvider() {
-    fetchProducts();
-    fetchSales();
-    fetchInventoryTransactions();
+    _initializeData();
+  }
+
+  /// FIX: Defer all initialization to avoid build phase issues
+  void _initializeData() {
+    // Schedule initialization after the current frame
+    Future.delayed(Duration.zero, () async {
+      try {
+        _isLoading = true;
+        notifyListeners();
+
+        await fetchProducts();
+        await fetchSales();
+        await fetchInventoryTransactions();
+
+        _isInitialized = true;
+        _isLoading = false;
+        notifyListeners();
+      } catch (e) {
+        debugPrint('Error initializing data: $e');
+        _isLoading = false;
+        _isInitialized = false;
+        notifyListeners();
+      }
+    });
   }
 
   void setSearchQuery(String query) {
@@ -48,21 +74,17 @@ class ProductProvider with ChangeNotifier {
   }
 
   Future<void> fetchProducts() async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
     try {
       final dbHelper = DatabaseHelper.instance;
       final productsData = await dbHelper.getProducts();
       _products = productsData.map((data) => Product.fromMap(data)).toList();
       debugPrint('Fetched ${productsData.length} products');
-      _isLoading = false;
+      _errorMessage = null;
       notifyListeners();
     } catch (e) {
       debugPrint('Error fetching products: $e');
       _products = [];
       _errorMessage = 'فشل في جلب المنتجات: $e';
-      _isLoading = false;
       notifyListeners();
     }
   }
@@ -78,19 +100,21 @@ class ProductProvider with ChangeNotifier {
       if (product.supplierName.isEmpty) throw Exception('اسم المورد مطلوب');
       if (product.quantity < 0)
         throw Exception('الكمية يجب أن تكون رقم إيجابي');
-      if (product.purchasePrice < 0 ||
-          product.retailPrice < 0 ||
-          product.wholesalePrice < 0 ||
-          product.bulkWholesalePrice < 0) {
-        throw Exception('الأسعار يجب أن تكون أرقام إيجابية');
+      if (product.purchasePrice <= 0 ||
+          product.retailPrice <= 0 ||
+          product.wholesalePrice <= 0 ||
+          product.bulkWholesalePrice <= 0) {
+        throw Exception('الأسعار يجب أن تكون أرقام موجبة');
       }
 
       final dbHelper = DatabaseHelper.instance;
       final productMap = product.toMap();
       productMap['dateAdded'] = DateTime.now().toIso8601String();
       debugPrint('Inserting product: $productMap');
+
       final id = await dbHelper.insertProduct(productMap);
       if (id == -1) throw Exception('فشل في إدراج المنتج في قاعدة البيانات');
+
       final newProduct = product.copyWith(id: id);
       _products.add(newProduct);
 
@@ -103,12 +127,14 @@ class ProductProvider with ChangeNotifier {
         notes: 'إضافة منتج جديد',
         dateTime: DateTime.now(),
       );
+
       final txId = await dbHelper.insertInventoryTransaction(
         inventoryTx.toMap(),
       );
       if (txId == -1) throw Exception('فشل في إدراج معاملة المخزون');
-      _inventoryTransactions.add(inventoryTx.copyWith(id: txId));
 
+      _inventoryTransactions.add(inventoryTx.copyWith(id: txId));
+      _errorMessage = null;
       notifyListeners();
     } catch (e) {
       debugPrint('Error adding product: $e');
@@ -125,11 +151,13 @@ class ProductProvider with ChangeNotifier {
         (p) => p.id == product.id,
         orElse: () => throw Exception('المنتج غير موجود في القائمة'),
       );
+
       final result = await dbHelper.updateProduct(product.id!, product.toMap());
       if (result == 0)
         throw Exception(
           'فشل في تحديث المنتج: لم يتم العثور على المنتج أو البيانات غير صالحة',
         );
+
       if (oldProduct.quantity != product.quantity) {
         final quantityChange = product.quantity - oldProduct.quantity;
         final transactionType = quantityChange > 0 ? 'زيادة' : 'نقصان';
@@ -142,17 +170,21 @@ class ProductProvider with ChangeNotifier {
           notes: 'تعديل كمية المنتج',
           dateTime: DateTime.now(),
         );
+
         final txId = await dbHelper.insertInventoryTransaction(
           inventoryTx.toMap(),
         );
         if (txId == -1) throw Exception('فشل في إدراج معاملة المخزون');
         _inventoryTransactions.add(inventoryTx.copyWith(id: txId));
       }
+
       final index = _products.indexWhere((p) => p.id == product.id);
       if (index != -1) {
         _products[index] = product;
-        notifyListeners();
       }
+
+      _errorMessage = null;
+      notifyListeners();
     } catch (e) {
       debugPrint('Error updating product: $e');
       _errorMessage = 'فشل في تحديث المنتج: $e';
@@ -167,7 +199,9 @@ class ProductProvider with ChangeNotifier {
       final result = await dbHelper.deleteProduct(id);
       if (result == 0)
         throw Exception('فشل في حذف المنتج: لم يتم العثور على المنتج');
+
       _products.removeWhere((p) => p.id == id);
+      _errorMessage = null;
       notifyListeners();
     } catch (e) {
       debugPrint('Error deleting product: $e');
@@ -185,6 +219,7 @@ class ProductProvider with ChangeNotifier {
   ) async {
     try {
       final dbHelper = DatabaseHelper.instance;
+
       // Verify product exists in database
       final productData = await dbHelper.getProducts();
       final exists = productData.any((p) => p['id'] == product.id);
@@ -203,73 +238,86 @@ class ProductProvider with ChangeNotifier {
         throw Exception('اسم العميل مطلوب');
       }
 
-      // Begin transaction
-      final db = await dbHelper.database; // Await to get Database object
-      await db.transaction((txn) async {
-        final priceType = product.getPriceType(quantitySold);
-        final unitPrice = product.getPrice(quantitySold);
-        final newQuantity = product.quantity - quantitySold;
-        final sale = SaleTransaction(
-          productId: product.id!,
-          productName: product.name,
-          priceType: priceType,
-          unitPrice: unitPrice,
-          purchasePrice: product.purchasePrice,
-          quantitySold: quantitySold,
-          quantityRemainingInStock: newQuantity,
-          customerName: customerName,
-          supplierName: product.supplierName,
-          saleDateTime: DateTime.now(),
-          notes: notes,
-        );
-        debugPrint('Inserting sale: ${sale.toMap()}');
-        final saleId = await txn.insert('sales', sale.toMap());
-        if (saleId == 0)
-          throw Exception('فشل في إدراج البيع في قاعدة البيانات');
+      final db = await dbHelper.database;
 
-        _sales.add(sale.copyWith(id: saleId));
+      try {
+        await db.transaction((txn) async {
+          final priceType = product.getPriceType(quantitySold);
+          final unitPrice = product.getPrice(quantitySold);
+          final newQuantity = product.quantity - quantitySold;
 
-        debugPrint(
-          'Updating product ID ${product.id} with new quantity: $newQuantity',
-        );
-        final updateResult = await dbHelper.updateProductQuantity(
-          product.id!,
-          newQuantity,
-        );
-        if (updateResult == 0) {
-          throw Exception(
-            'فشل في تحديث كمية المنتج: لم يتم العثور على المنتج (ID: ${product.id})',
+          final sale = SaleTransaction(
+            productId: product.id!,
+            productName: product.name,
+            priceType: priceType,
+            unitPrice: unitPrice,
+            purchasePrice: product.purchasePrice,
+            quantitySold: quantitySold,
+            quantityRemainingInStock: newQuantity,
+            customerName: customerName,
+            supplierName: product.supplierName,
+            saleDateTime: DateTime.now(),
+            notes: notes,
           );
-        }
-        final index = _products.indexWhere((p) => p.id == product.id);
-        if (index != -1) {
-          _products[index] = product.copyWith(quantity: newQuantity);
-        } else {
+
+          debugPrint('Inserting sale: ${sale.toMap()}');
+          final saleId = await txn.insert('sales', sale.toMap());
+          if (saleId == 0) {
+            throw Exception('فشل في إدراج البيع في قاعدة البيانات');
+          }
+
+          _sales.add(sale.copyWith(id: saleId));
+
           debugPrint(
-            'Warning: Product ID ${product.id} not found in in-memory list',
+            'Updating product ID ${product.id} with new quantity: $newQuantity',
           );
-          await fetchProducts(); // Refresh products list
-        }
+          final updateResult = await txn.rawUpdate(
+            'UPDATE products SET quantity = ? WHERE id = ?',
+            [newQuantity, product.id!],
+          );
+          if (updateResult == 0) {
+            throw Exception(
+              'فشل في تحديث كمية المنتج: لم يتم العثور على المنتج (ID: ${product.id})',
+            );
+          }
 
-        final inventoryTx = InventoryTransaction(
-          productId: product.id!,
-          productName: product.name,
-          transactionType: 'بيع',
-          quantityChange: -quantitySold,
-          quantityAfter: newQuantity,
-          relatedSaleId: saleId.toString(),
-          notes: 'بيع لـ $customerName',
-          dateTime: DateTime.now(),
-        );
-        debugPrint('Inserting inventory transaction: ${inventoryTx.toMap()}');
-        final txId = await txn.insert(
-          'inventory_transactions',
-          inventoryTx.toMap(),
-        );
-        if (txId == 0) throw Exception('فشل في إدراج معاملة المخزون');
-        _inventoryTransactions.add(inventoryTx.copyWith(id: txId));
-      });
+          final index = _products.indexWhere((p) => p.id == product.id);
+          if (index != -1) {
+            _products[index] = product.copyWith(quantity: newQuantity);
+          } else {
+            debugPrint(
+              'Warning: Product ID ${product.id} not found in in-memory list',
+            );
+            await fetchProducts();
+          }
 
+          final inventoryTx = InventoryTransaction(
+            productId: product.id!,
+            productName: product.name,
+            transactionType: 'بيع',
+            quantityChange: -quantitySold,
+            quantityAfter: newQuantity,
+            relatedSaleId: saleId.toString(),
+            notes: 'بيع لـ $customerName',
+            dateTime: DateTime.now(),
+          );
+
+          debugPrint('Inserting inventory transaction: ${inventoryTx.toMap()}');
+          final txId = await txn.insert(
+            'inventory_transactions',
+            inventoryTx.toMap(),
+          );
+          if (txId == 0) {
+            throw Exception('فشل في إدراج معاملة المخزون');
+          }
+          _inventoryTransactions.add(inventoryTx.copyWith(id: txId));
+        });
+      } catch (e) {
+        debugPrint('Transaction error: $e');
+        rethrow;
+      }
+
+      _errorMessage = null;
       notifyListeners();
     } catch (e) {
       debugPrint('Error selling product: $e');
@@ -301,6 +349,7 @@ class ProductProvider with ChangeNotifier {
       debugPrint(
         'Updating product ID ${product.id} with new quantity: $newQuantity',
       );
+
       final updateResult = await dbHelper.updateProductQuantity(
         product.id!,
         newQuantity,
@@ -310,11 +359,12 @@ class ProductProvider with ChangeNotifier {
           'فشل في تحديث كمية المنتج: لم يتم العثور على المنتج (ID: ${product.id})',
         );
       }
+
       final index = _products.indexWhere((p) => p.id == product.id);
       if (index != -1) {
         _products[index] = product.copyWith(quantity: newQuantity);
       } else {
-        await fetchProducts(); // Refresh products list
+        await fetchProducts();
       }
 
       final inventoryTx = InventoryTransaction(
@@ -326,11 +376,14 @@ class ProductProvider with ChangeNotifier {
         notes: reason,
         dateTime: DateTime.now(),
       );
+
       final txId = await dbHelper.insertInventoryTransaction(
         inventoryTx.toMap(),
       );
       if (txId == -1) throw Exception('فشل في إدراج معاملة المخزون');
+
       _inventoryTransactions.add(inventoryTx.copyWith(id: txId));
+      _errorMessage = null;
       notifyListeners();
     } catch (e) {
       debugPrint('Error returning product: $e');
@@ -392,5 +445,104 @@ class ProductProvider with ChangeNotifier {
 
   Future<void> refreshProducts() async {
     await fetchProducts();
+  }
+
+  Future<void> returnSale(
+    int saleId,
+    int quantityReturned,
+    String reason,
+  ) async {
+    try {
+      final dbHelper = DatabaseHelper.instance;
+
+      // البحث عن البيع
+      final saleIndex = _sales.indexWhere((s) => s.id == saleId);
+      if (saleIndex == -1) {
+        throw Exception('البيع غير موجود');
+      }
+
+      final sale = _sales[saleIndex];
+      final product = _products.firstWhere(
+        (p) => p.id == sale.productId,
+        orElse: () => throw Exception('المنتج غير موجود'),
+      );
+
+      if (quantityReturned > sale.quantitySold) {
+        throw Exception(
+          'كمية الاسترجاع لا يمكن أن تكون أكثر من الكمية المباعة (${sale.quantitySold})',
+        );
+      }
+
+      if (quantityReturned <= 0) {
+        throw Exception('كمية الاسترجاع يجب أن تكون أكبر من 0');
+      }
+
+      // تحديث كمية المنتج (إضافة الكمية المسترجعة)
+      final newQuantity = product.quantity + quantityReturned;
+      final updateResult = await dbHelper.updateProductQuantity(
+        sale.productId,
+        newQuantity,
+      );
+      if (updateResult == 0) {
+        throw Exception('فشل في تحديث كمية المنتج');
+      }
+
+      // تحديث المنتج في الذاكرة
+      final productIndex = _products.indexWhere((p) => p.id == sale.productId);
+      if (productIndex != -1) {
+        _products[productIndex] = product.copyWith(quantity: newQuantity);
+      }
+
+      // حذف البيع أو تحديثه حسب الكمية المسترجعة
+      if (quantityReturned == sale.quantitySold) {
+        // إذا تم استرجاع كل الكمية - حذف البيع تماماً
+        await dbHelper.deleteSale(saleId);
+        _sales.removeAt(saleIndex);
+        debugPrint('تم حذف البيع رقم $saleId نهائياً');
+      } else {
+        // إذا كان الاسترجاع جزئي - تقليل الكمية المباعة
+        final remainingQuantity = sale.quantitySold - quantityReturned;
+        final updatedSale = sale.copyWith(
+          quantitySold: remainingQuantity,
+          quantityRemainingInStock:
+              sale.quantityRemainingInStock + quantityReturned,
+        );
+        await dbHelper.updateSale(saleId, updatedSale.toMap());
+        _sales[saleIndex] = updatedSale;
+        debugPrint(
+          'تم تحديث البيع رقم $saleId - الكمية المتبقية: $remainingQuantity',
+        );
+      }
+
+      // تسجيل معاملة الاسترجاع في حركة المخزون
+      final inventoryTx = InventoryTransaction(
+        productId: sale.productId,
+        productName: sale.productName,
+        transactionType: 'استرجاع من بيع',
+        quantityChange: quantityReturned,
+        quantityAfter: newQuantity,
+        relatedSaleId: saleId.toString(),
+        notes: reason,
+        dateTime: DateTime.now(),
+      );
+
+      final txId = await dbHelper.insertInventoryTransaction(
+        inventoryTx.toMap(),
+      );
+      if (txId == -1) throw Exception('فشل في تسجيل معاملة المخزون');
+
+      _inventoryTransactions.add(inventoryTx.copyWith(id: txId));
+      _errorMessage = null;
+      notifyListeners();
+
+      debugPrint(
+        'تم الاسترجاع بنجاح: $quantityReturned من ${sale.productName}',
+      );
+    } catch (e) {
+      debugPrint('Error returning sale: $e');
+      _errorMessage = 'فشل في الاسترجاع: $e';
+      notifyListeners();
+      rethrow;
+    }
   }
 }

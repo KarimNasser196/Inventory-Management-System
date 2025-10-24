@@ -1,3 +1,5 @@
+// lib/screens/add_product_screen.dart (FIXED)
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -15,6 +17,7 @@ class AddProductScreen extends StatefulWidget {
 class _AddProductScreenState extends State<AddProductScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
+  late TextEditingController _modelController; // FIX: Added model controller
   late TextEditingController _specController;
   late TextEditingController _purchasePriceController;
   late TextEditingController _retailPriceController;
@@ -30,6 +33,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.product?.name ?? '');
+    _modelController = TextEditingController(text: widget.product?.model ?? '');
     _specController = TextEditingController(
       text: widget.product?.specifications ?? '',
     );
@@ -56,6 +60,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _modelController.dispose(); // FIX: Dispose model controller
     _specController.dispose();
     _purchasePriceController.dispose();
     _retailPriceController.dispose();
@@ -145,6 +150,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                           : null,
                                     ),
                                     _buildTextField(
+                                      _modelController, // FIX: Added model field
+                                      'الصنف ',
+                                      Icons.category,
+                                    ),
+                                    _buildTextField(
                                       _specController,
                                       'المواصفات',
                                       Icons.description,
@@ -162,6 +172,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                   ],
                                 ),
 
+                                const SizedBox(height: 24),
                                 Text(
                                   'الأسعار',
                                   style: Theme.of(context).textTheme.titleLarge
@@ -347,8 +358,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
           return 'الرجاء إدخال $label';
         }
         final price = double.tryParse(value);
-        if (price == null || price < 0) {
-          return 'الرجاء إدخال سعر صالح (رقم إيجابي)';
+        if (price == null) {
+          return 'الرجاء إدخال رقم صحيح';
+        }
+        // FIX: Validate that price is positive (greater than 0)
+        if (price <= 0) {
+          return 'الرجاء إدخال سعر موجب (أكبر من 0)';
         }
         return null;
       },
@@ -389,6 +404,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final product = Product(
       id: widget.product?.id,
       name: _nameController.text,
+      model: _modelController.text.isEmpty
+          ? null
+          : _modelController.text, // FIX: Handle model field
       specifications: _specController.text.isEmpty
           ? null
           : _specController.text,
@@ -413,6 +431,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         ).showSnackBar(const SnackBar(content: Text('تم إضافة المنتج بنجاح')));
         // Clear form after adding new product
         _nameController.clear();
+        _modelController.clear(); // FIX: Clear model field
         _specController.clear();
         _purchasePriceController.clear();
         _retailPriceController.clear();
@@ -427,6 +446,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text('خطأ: $e')));
     } finally {
+      // FIX: Always clear loading state
       setState(() => _isSaving = false);
     }
   }

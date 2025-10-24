@@ -135,18 +135,6 @@ class DashboardScreen extends StatelessWidget {
                             '${provider.totalQuantityInStock}',
                             Colors.green,
                           ),
-                          const SizedBox(height: 12),
-                          _buildStatTile(
-                            'المبيعات',
-                            '${totalSalesAmount.toStringAsFixed(0)} جنيه',
-                            Colors.orange,
-                          ),
-                          const SizedBox(height: 12),
-                          _buildStatTile(
-                            'الأرباح',
-                            '${totalProfit.toStringAsFixed(0)} جنيه',
-                            Colors.purple,
-                          ),
                         ],
                       )
                     : GridView.count(
@@ -166,16 +154,6 @@ class DashboardScreen extends StatelessWidget {
                             'الكميات',
                             '${provider.totalQuantityInStock}',
                             Colors.green,
-                          ),
-                          _buildStatTile(
-                            'المبيعات',
-                            '${totalSalesAmount.toStringAsFixed(0)} جنيه',
-                            Colors.orange,
-                          ),
-                          _buildStatTile(
-                            'الأرباح',
-                            '${totalProfit.toStringAsFixed(0)} جنيه',
-                            Colors.purple,
                           ),
                         ],
                       );

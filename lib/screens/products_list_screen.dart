@@ -1,3 +1,5 @@
+// lib/screens/products_list_screen.dart (FIXED)
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
@@ -18,6 +20,10 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
   void initState() {
     super.initState();
     _searchController = TextEditingController();
+    // FIX: Add listener to rebuild when text changes
+    _searchController.addListener(() {
+      setState(() {});
+    });
   }
 
   @override
@@ -49,6 +55,7 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                             context,
                             listen: false,
                           ).setSearchQuery('');
+                          setState(() {}); // FIX: Force rebuild
                         },
                       )
                     : null,
@@ -61,6 +68,7 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                   context,
                   listen: false,
                 ).setSearchQuery(query);
+                setState(() {}); // FIX: Ensure UI updates
               },
             ),
           ),
@@ -339,6 +347,8 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                   product.specifications!.isNotEmpty)
                 _buildDetailItem('المواصفات', product.specifications!),
               _buildDetailItem('المورد', product.supplierName),
+              if (product.model != null && product.model!.isNotEmpty)
+                _buildDetailItem('النموذج', product.model!),
               const Divider(),
               _buildDetailItem(
                 'سعر الشراء',

@@ -1,326 +1,497 @@
+// lib/screens/return_product_screen.dart - Modern Returns Display
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
-import '../models/product.dart';
 
-class ReturnProductScreen extends StatefulWidget {
+class ReturnProductScreen extends StatelessWidget {
   const ReturnProductScreen({super.key});
-
-  @override
-  State<ReturnProductScreen> createState() => _ReturnProductScreenState();
-}
-
-class _ReturnProductScreenState extends State<ReturnProductScreen> {
-  final _formKey = GlobalKey<FormState>();
-  Product? _selectedProduct;
-  int _quantity = 1;
-  String _returnReason = '';
-  String? _notes;
 
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 600;
-    return Shortcuts(
-      shortcuts: {
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyS):
-            const ActivateIntent(),
-      },
-      child: Actions(
-        actions: {
-          ActivateIntent: CallbackAction<ActivateIntent>(
-            onInvoke: (intent) => _returnProduct(),
-          ),
-        },
-        child: Scaffold(
-          body: Consumer<ProductProvider>(
-            builder: (context, provider, _) {
-              if (provider.isLoading) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (provider.errorMessage != null) {
-                return Center(child: Text('خطأ: ${provider.errorMessage}'));
-              }
-              if (provider.products.isEmpty) {
-                return const Center(
-                  child: Text('لا توجد منتجات متاحة للإرجاع'),
-                );
-              }
-              return SingleChildScrollView(
-                padding: EdgeInsets.all(isMobile ? 16 : 32),
-                child: Center(
-                  child: Container(
-                    constraints: const BoxConstraints(maxWidth: 800),
-                    child: Card(
-                      elevation: 4,
-                      child: Padding(
-                        padding: EdgeInsets.all(isMobile ? 16 : 24),
-                        child: FocusScope(
-                          child: Form(
-                            key: _formKey,
-                            child: isMobile
-                                ? Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: _buildFormFields(
-                                      context,
-                                      provider,
-                                      isMobile,
-                                    ),
-                                  )
-                                : Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: _buildFormFields(
-                                            context,
-                                            provider,
-                                            isMobile,
-                                          ).sublist(0, 2),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 24),
-                                      Expanded(
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: _buildFormFields(
-                                            context,
-                                            provider,
-                                            isMobile,
-                                          ).sublist(2),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                          ),
-                        ),
-                      ),
+    return Scaffold(
+      body: Consumer<ProductProvider>(
+        builder: (context, provider, _) {
+          final returnTransactions = provider.inventoryTransactions
+              .where((tx) => tx.transactionType == 'استرجاع من بيع')
+              .toList();
+          if (returnTransactions.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.reply, size: 80, color: Colors.grey[300]),
+                  const SizedBox(height: 16),
+                  Text(
+                    'لا توجد منتجات مسترجعة',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return SingleChildScrollView(
+            padding: EdgeInsets.all(isMobile ? 16 : 24),
+            child: Column(
+              children: [
+                Text(
+                  'المنتجات المسترجعة',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: isMobile ? 28 : 36,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.orange[100],
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'إجمالي الاسترجاعات: ${returnTransactions.length}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.orange[800],
                     ),
                   ),
                 ),
-              );
-            },
-          ),
-        ),
+                const SizedBox(height: 24),
+                isMobile
+                    ? _buildMobileReturnsList(
+                        context,
+                        provider,
+                        returnTransactions,
+                      )
+                    : _buildDesktopReturnsList(
+                        context,
+                        provider,
+                        returnTransactions,
+                      ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
-  List<Widget> _buildFormFields(
+  Widget _buildMobileReturnsList(
     BuildContext context,
     ProductProvider provider,
-    bool isMobile,
+    List<dynamic> returnTransactions,
   ) {
-    return [
-      Text(
-        'إرجاع منتج',
-        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-          fontWeight: FontWeight.bold,
-          fontSize: isMobile ? 24 : 32,
-        ),
-      ),
-      const SizedBox(height: 24),
-      DropdownButtonFormField<Product>(
-        decoration: InputDecoration(
-          labelText: 'اختر المنتج',
-          border: const OutlineInputBorder(),
-          prefixIcon: const Icon(Icons.inventory),
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Colors.blue, width: 2),
-          ),
-        ),
-        value: _selectedProduct,
-        items: provider.products.map((product) {
-          return DropdownMenuItem(value: product, child: Text(product.name));
-        }).toList(),
-        onChanged: (value) {
-          setState(() {
-            _selectedProduct = value;
-            _quantity = 1;
-          });
-        },
-        validator: (value) => value == null ? 'يرجى اختيار منتج' : null,
-      ),
-      const SizedBox(height: 16),
-      TextFormField(
-        decoration: InputDecoration(
-          labelText: 'الكمية',
-          border: const OutlineInputBorder(),
-          prefixIcon: const Icon(Icons.format_list_numbered),
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Colors.blue, width: 2),
-          ),
-        ),
-        keyboardType: TextInputType.number,
-        initialValue: '1',
-        onChanged: (value) {
-          setState(() {
-            _quantity = int.tryParse(value) ?? 1;
-          });
-        },
-        validator: (value) {
-          if (value == null || value.isEmpty) return 'يرجى إدخال الكمية';
-          final qty = int.tryParse(value);
-          if (qty == null || qty <= 0) return 'الكمية يجب أن تكون أكبر من 0';
-          return null;
-        },
-      ),
-      const SizedBox(height: 16),
-      TextFormField(
-        decoration: InputDecoration(
-          labelText: 'سبب الإرجاع',
-          border: const OutlineInputBorder(),
-          prefixIcon: const Icon(Icons.warning),
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Colors.blue, width: 2),
-          ),
-        ),
-        onChanged: (value) {
-          _returnReason = value;
-        },
-        validator: (value) =>
-            value == null || value.isEmpty ? 'يرجى إدخال سبب الإرجاع' : null,
-      ),
-      const SizedBox(height: 16),
-      TextFormField(
-        decoration: InputDecoration(
-          labelText: 'ملاحظات (اختياري)',
-          border: const OutlineInputBorder(),
-          prefixIcon: const Icon(Icons.note),
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Colors.blue, width: 2),
-          ),
-        ),
-        maxLines: 3,
-        onChanged: (value) {
-          _notes = value.isEmpty ? null : value;
-        },
-      ),
-      const SizedBox(height: 24),
-      Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          MouseRegion(
-            onEnter: (_) => setState(() {}),
-            onExit: (_) => setState(() {}),
-            child: ElevatedButton.icon(
-              onPressed: _returnProduct,
-              icon: const Icon(Icons.assignment_return),
-              label: const Text('تسجيل الإرجاع'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-                backgroundColor: Colors.orange,
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          MouseRegion(
-            onEnter: (_) => setState(() {}),
-            onExit: (_) => setState(() {}),
-            child: OutlinedButton.icon(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.cancel),
-              label: const Text('إلغاء'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    ];
-  }
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: returnTransactions.length,
+      itemBuilder: (context, index) {
+        final tx = returnTransactions[index];
 
-  void _returnProduct() {
-    if (_formKey.currentState!.validate()) {
-      try {
-        final provider = Provider.of<ProductProvider>(context, listen: false);
-        provider.returnProduct(_selectedProduct!, _quantity, _returnReason);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'تم تسجيل الإرجاع بنجاح للمنتج ${_selectedProduct!.name}',
+        // الحصول على بيانات البيع الأصلية
+        final sale = tx.relatedSaleId != null
+            ? provider.sales.cast<dynamic>().firstWhere(
+                    (s) => s.id.toString() == tx.relatedSaleId,
+                    orElse: () => null,
+                  )
+                  as dynamic
+            : null;
+
+        final quantityPurchased = sale?.quantitySold ?? 0;
+        final quantityReturned = tx.quantityChange;
+        final percentageReturned = quantityPurchased > 0
+            ? (quantityReturned / quantityPurchased * 100)
+            : 0;
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: Colors.grey[200]!),
             ),
-            action: SnackBarAction(
-              label: 'عرض التفاصيل',
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('تفاصيل الإرجاع'),
-                    content: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildDetailItem('المنتج', _selectedProduct!.name),
-                        _buildDetailItem('الكمية', '$_quantity'),
-                        _buildDetailItem('سبب الإرجاع', _returnReason),
-                        if (_notes != null)
-                          _buildDetailItem('ملاحظات', _notes!),
-                      ],
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('إغلاق'),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange[50],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.reply,
+                          color: Colors.orange,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              tx.productName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                );
-              },
+                  const SizedBox(height: 16),
+                  // كمية البيع والاسترجاع
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[50],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          children: [
+                            Text(
+                              'الكمية المشتراة',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '$quantityPurchased',
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Column(
+                          children: [
+                            Icon(Icons.arrow_forward, color: Colors.grey[400]),
+                          ],
+                        ),
+                        Column(
+                          children: [
+                            Text(
+                              'الكمية المسترجعة',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '$quantityReturned',
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // التفاصيل الإضافية
+                  if (sale != null)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'اسم العميل',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              Text(
+                                sale.customerName,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'السبب',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  tx.notes ?? '-',
+                                  textAlign: TextAlign.end,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'التاريخ والوقت',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              Text(
+                                DateFormat(
+                                  'yyyy-MM-dd HH:mm',
+                                ).format(tx.dateTime),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         );
-        _formKey.currentState!.reset();
-        setState(() {
-          _selectedProduct = null;
-          _quantity = 1;
-          _returnReason = '';
-          _notes = null;
-        });
-      } catch (e) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('خطأ أثناء تسجيل الإرجاع: $e')));
-      }
-    }
+      },
+    );
   }
 
-  Widget _buildDetailItem(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.bold,
+  Widget _buildDesktopReturnsList(
+    BuildContext context,
+    ProductProvider provider,
+    List<dynamic> returnTransactions,
+  ) {
+    return Wrap(
+      spacing: 24,
+      runSpacing: 24,
+      children: returnTransactions.map((tx) {
+        final sale = tx.relatedSaleId != null
+            ? provider.sales.cast<dynamic>().firstWhere(
+                    (s) => s.id.toString() == tx.relatedSaleId,
+                    orElse: () => null,
+                  )
+                  as dynamic
+            : null;
+
+        final quantityReturned = tx.quantityChange;
+
+        return SizedBox(
+          width: 380,
+          child: Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: Colors.grey[200]!),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange[50],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.reply,
+                          color: Colors.orange,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              tx.productName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  // كمية البيع والاسترجاع
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[50],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          children: [
+                            Text(
+                              'المسترجع',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '$quantityReturned',
+                              style: const TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (sale != null)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'العميل',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              Text(
+                                sale.customerName,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'السبب',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  tx.notes ?? '-',
+                                  textAlign: TextAlign.end,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'التاريخ',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              Text(
+                                DateFormat(
+                                  'yyyy-MM-dd HH:mm',
+                                ).format(tx.dateTime),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-          ),
-        ],
-      ),
+        );
+      }).toList(),
     );
   }
 }

@@ -1,3 +1,5 @@
+// lib/models/inventory_transaction.dart (FIXED)
+
 class InventoryTransaction {
   int? id;
   int productId;
@@ -8,6 +10,7 @@ class InventoryTransaction {
   DateTime dateTime;
   String? relatedSaleId;
   String? notes;
+
   InventoryTransaction({
     this.id,
     required this.productId,
@@ -19,19 +22,30 @@ class InventoryTransaction {
     this.relatedSaleId,
     this.notes,
   }) : dateTime = dateTime ?? DateTime.now();
+
   factory InventoryTransaction.fromMap(Map<String, dynamic> map) {
+    // FIX: Safe DateTime parsing with error handling
+    DateTime parsedDate;
+    try {
+      parsedDate = DateTime.parse(map['dateTime'] as String);
+    } catch (e) {
+      print('Error parsing date: $e, using current time');
+      parsedDate = DateTime.now();
+    }
+
     return InventoryTransaction(
-      id: map['id'],
-      productId: map['productId'],
-      productName: map['productName'],
-      transactionType: map['transactionType'],
-      quantityChange: map['quantityChange'],
-      quantityAfter: map['quantityAfter'],
-      dateTime: DateTime.parse(map['dateTime']),
-      relatedSaleId: map['relatedSaleId'],
-      notes: map['notes'],
+      id: map['id'] as int?,
+      productId: map['productId'] as int,
+      productName: map['productName'] as String,
+      transactionType: map['transactionType'] as String,
+      quantityChange: map['quantityChange'] as int,
+      quantityAfter: map['quantityAfter'] as int,
+      dateTime: parsedDate,
+      relatedSaleId: map['relatedSaleId'] as String?,
+      notes: map['notes'] as String?,
     );
   }
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,

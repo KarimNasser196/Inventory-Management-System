@@ -1,3 +1,5 @@
+// lib/models/sale_transaction.dart (FULLY FIXED)
+
 import 'package:flutter/foundation.dart';
 
 class SaleTransaction {
@@ -9,11 +11,13 @@ class SaleTransaction {
   double purchasePrice;
   int quantitySold;
   int quantityRemainingInStock;
-  double totalAmount;
   String customerName;
   String supplierName;
   DateTime saleDateTime;
   String? notes;
+
+  // FIX: Make totalAmount a getter so it always reflects current values
+  double get totalAmount => (unitPrice * quantitySold).toDouble();
 
   SaleTransaction({
     this.id,
@@ -28,10 +32,23 @@ class SaleTransaction {
     required this.supplierName,
     DateTime? saleDateTime,
     this.notes,
-  }) : totalAmount = unitPrice * quantitySold,
-       saleDateTime = saleDateTime ?? DateTime.now();
+  }) : saleDateTime = saleDateTime ?? DateTime.now() {
+    // Validate inputs
+    if (unitPrice < 0 || quantitySold < 0) {
+      throw ArgumentError('Unit price and quantity must be non-negative');
+    }
+  }
 
   factory SaleTransaction.fromMap(Map<String, dynamic> map) {
+    // FIX: Safe DateTime parsing
+    DateTime parsedDate;
+    try {
+      parsedDate = DateTime.parse(map['saleDateTime'] as String);
+    } catch (e) {
+      debugPrint('Error parsing date: $e, using current time');
+      parsedDate = DateTime.now();
+    }
+
     return SaleTransaction(
       id: map['id'] as int?,
       productId: map['productId'] as int,
@@ -43,7 +60,7 @@ class SaleTransaction {
       quantityRemainingInStock: map['quantityRemainingInStock'] as int,
       customerName: map['customerName'] as String,
       supplierName: map['supplierName'] as String,
-      saleDateTime: DateTime.parse(map['saleDateTime'] as String),
+      saleDateTime: parsedDate,
       notes: map['notes'] as String?,
     );
   }
