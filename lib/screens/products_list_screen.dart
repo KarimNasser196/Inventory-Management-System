@@ -585,12 +585,12 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                       valueColor: Colors.blue[700],
                     ),
                     _buildDetailItem(
-                      'سعر الجملة (10+)',
+                      'سعر الجملة',
                       '${product.wholesalePrice.toStringAsFixed(2)} جنيه',
                       valueColor: Colors.green[700],
                     ),
                     _buildDetailItem(
-                      'سعر جملة الجملة (50+)',
+                      'سعر جملة الجملة',
                       '${product.bulkWholesalePrice.toStringAsFixed(2)} جنيه',
                       valueColor: Colors.orange[700],
                     ),
