@@ -1,5 +1,3 @@
-// lib/screens/products_list_screen.dart (FIXED)
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
@@ -20,7 +18,6 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
   void initState() {
     super.initState();
     _searchController = TextEditingController();
-    // FIX: Add listener to rebuild when text changes
     _searchController.addListener(() {
       setState(() {});
     });
@@ -38,41 +35,60 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
     return Scaffold(
       body: Column(
         children: [
-          // Search bar
+          // Search bar and Add button
           Padding(
             padding: EdgeInsets.all(isMobile ? 16 : 24),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'ابحث عن منتج...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          Provider.of<ProductProvider>(
-                            context,
-                            listen: false,
-                          ).setSearchQuery('');
-                          setState(() {}); // FIX: Force rebuild
-                        },
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'ابحث عن منتج...',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _searchController.clear();
+                                Provider.of<ProductProvider>(
+                                  context,
+                                  listen: false,
+                                ).setSearchQuery('');
+                                setState(() {});
+                              },
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onChanged: (query) {
+                      Provider.of<ProductProvider>(
+                        context,
+                        listen: false,
+                      ).setSearchQuery(query);
+                      setState(() {});
+                    },
+                  ),
                 ),
-              ),
-              onChanged: (query) {
-                Provider.of<ProductProvider>(
-                  context,
-                  listen: false,
-                ).setSearchQuery(query);
-                setState(() {}); // FIX: Ensure UI updates
-              },
+                const SizedBox(width: 16),
+                ElevatedButton.icon(
+                  onPressed: () => _navigateToAddProduct(context),
+                  icon: const Icon(Icons.add),
+                  label: const Text('إضافة منتج'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 20,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          // Products list
+          // Excel-style table
           Expanded(
             child: Consumer<ProductProvider>(
               builder: (context, provider, _) {
@@ -101,236 +117,241 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                     ),
                   );
                 }
-                return isMobile
-                    ? _buildMobileList(context, provider.products)
-                    : _buildDesktopGrid(context, provider.products);
+                return _buildExcelTable(context, provider.products);
               },
             ),
           ),
         ],
       ),
-      floatingActionButton: isMobile
-          ? FloatingActionButton.extended(
-              onPressed: () => _navigateToAddProduct(context),
-              icon: const Icon(Icons.add),
-              label: const Text('إضافة منتج'),
-              backgroundColor: Colors.blue,
-            )
-          : null,
     );
   }
 
-  Widget _buildMobileList(BuildContext context, List<Product> products) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: products.length,
-      itemBuilder: (context, index) {
-        final product = products[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: product.quantity > 0 ? Colors.green : Colors.red,
-              child: Text(
-                '${product.quantity}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+  Widget _buildExcelTable(BuildContext context, List<Product> products) {
+    return Card(
+      margin: const EdgeInsets.only(left: 24, right: 24, bottom: 24),
+      elevation: 4,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SingleChildScrollView(
+          child: DataTable(
+            headingRowColor: MaterialStateProperty.all(Colors.blue[50]),
+            headingRowHeight: 56,
+            dataRowHeight: 60,
+            border: TableBorder.all(color: Colors.grey[300]!, width: 1),
+            columnSpacing: 24,
+            columns: const [
+              DataColumn(
+                label: Text(
+                  'الاسم',
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
-            ),
-            title: Text(
-              product.name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(product.supplierName),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Text(
-                      'فردي: ${product.retailPrice.toStringAsFixed(0)}',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'جملة: ${product.wholesalePrice.toStringAsFixed(0)}',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'جملة جملة: ${product.bulkWholesalePrice.toStringAsFixed(0)}',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ],
+              DataColumn(
+                label: Text(
+                  'الصنف',
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-              ],
-            ),
-            trailing: PopupMenuButton<String>(
-              onSelected: (value) => _handleMenuAction(context, value, product),
-              itemBuilder: (context) => [
-                const PopupMenuItem(value: 'view', child: Text('عرض التفاصيل')),
-                const PopupMenuItem(value: 'edit', child: Text('تعديل')),
-                const PopupMenuItem(value: 'delete', child: Text('حذف')),
-              ],
-            ),
-            onTap: () => _showProductDetails(context, product),
-          ),
-        );
-      },
-    );
-  }
+              ),
+              DataColumn(
+                label: Text(
+                  'المخزن',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
 
-  Widget _buildDesktopGrid(BuildContext context, List<Product> products) {
-    return GridView.builder(
-      padding: const EdgeInsets.all(24),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        crossAxisSpacing: 24,
-        mainAxisSpacing: 24,
-        childAspectRatio: 1.2,
-      ),
-      itemCount: products.length,
-      itemBuilder: (context, index) {
-        final product = products[index];
-        return Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: InkWell(
-            onTap: () => _showProductDetails(context, product),
-            onHover: (isHovering) {},
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          product.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+              DataColumn(
+                label: Text(
+                  'المواصفات',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              DataColumn(
+                label: Text(
+                  'المورد',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              DataColumn(
+                label: Text(
+                  'الكمية',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                numeric: true,
+              ),
+              DataColumn(
+                label: Text(
+                  'سعر الشراء',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                numeric: true,
+              ),
+              DataColumn(
+                label: Text(
+                  'سعر البيع (فردي)',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                numeric: true,
+              ),
+              DataColumn(
+                label: Text(
+                  'سعر الجملة',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                numeric: true,
+              ),
+              DataColumn(
+                label: Text(
+                  'سعر جملة الجملة',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                numeric: true,
+              ),
+              DataColumn(
+                label: Text(
+                  'الملاحظات',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              DataColumn(
+                label: Text(
+                  'الإجراءات',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+            rows: products.map((product) {
+              return DataRow(
+                cells: [
+                  DataCell(
+                    SizedBox(
+                      width: 150,
+                      child: Text(
+                        product.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  DataCell(
+                    SizedBox(width: 100, child: Text(product.category ?? '-')),
+                  ),
+                  DataCell(
+                    SizedBox(width: 100, child: Text(product.warehouse ?? '-')),
+                  ),
+
+                  DataCell(
+                    SizedBox(
+                      width: 200,
+                      child: Text(
+                        product.specifications ?? '-',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  DataCell(
+                    SizedBox(width: 120, child: Text(product.supplierName)),
+                  ),
+                  DataCell(
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: product.quantity > 0
+                            ? Colors.green[50]
+                            : Colors.red[50],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${product.quantity}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: product.quantity > 0
+                              ? Colors.green
+                              : Colors.red,
                         ),
                       ),
-                      PopupMenuButton<String>(
-                        onSelected: (value) =>
-                            _handleMenuAction(context, value, product),
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'view',
-                            child: Text('عرض التفاصيل'),
-                          ),
-                          const PopupMenuItem(
-                            value: 'edit',
-                            child: Text('تعديل'),
-                          ),
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: Text('حذف'),
-                          ),
-                        ],
+                    ),
+                  ),
+                  DataCell(
+                    Text(
+                      '${product.purchasePrice.toStringAsFixed(2)} جنيه',
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  DataCell(
+                    Text(
+                      '${product.retailPrice.toStringAsFixed(2)} جنيه',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: Colors.blue,
                       ),
-                    ],
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    product.supplierName,
-                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                  ),
-                  Text(
-                    product.specifications ?? '',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                  ),
-                  Text(
-                    product.purchasePrice > 0
-                        ? 'سعر الشراء: ${product.purchasePrice.toStringAsFixed(2)} جنيه'
-                        : '',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                  ),
-                  const Spacer(),
-                  const Divider(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'الكمية',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          Text(
-                            '${product.quantity}',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: product.quantity > 0
-                                  ? Colors.green
-                                  : Colors.red,
-                            ),
-                          ),
-                        ],
+                  DataCell(
+                    Text(
+                      '${product.wholesalePrice.toStringAsFixed(2)} جنيه',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: Colors.green,
                       ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            'فردي',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          Text(
-                            '${product.retailPrice.toStringAsFixed(0)} جنيه',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue,
-                            ),
-                          ),
-                        ],
+                    ),
+                  ),
+                  DataCell(
+                    Text(
+                      '${product.bulkWholesalePrice.toStringAsFixed(2)} جنيه',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: Colors.orange,
                       ),
-                    ],
+                    ),
+                  ),
+                  DataCell(
+                    SizedBox(
+                      width: 150,
+                      child: Text(
+                        product.notes ?? '-',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  DataCell(
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.visibility, size: 20),
+                          tooltip: 'عرض',
+                          onPressed: () =>
+                              _showProductDetails(context, product),
+                          color: Colors.blue,
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.edit, size: 20),
+                          tooltip: 'تعديل',
+                          onPressed: () =>
+                              _navigateToEditProduct(context, product),
+                          color: Colors.orange,
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete, size: 20),
+                          tooltip: 'حذف',
+                          onPressed: () => _confirmDelete(context, product),
+                          color: Colors.red,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
-              ),
-            ),
+              );
+            }).toList(),
           ),
-        );
-      },
+        ),
+      ),
     );
-  }
-
-  void _handleMenuAction(BuildContext context, String action, Product product) {
-    switch (action) {
-      case 'view':
-        _showProductDetails(context, product);
-        break;
-      case 'edit':
-        _navigateToEditProduct(context, product);
-        break;
-      case 'delete':
-        _confirmDelete(context, product);
-        break;
-    }
   }
 
   void _showProductDetails(BuildContext context, Product product) {
@@ -343,12 +364,13 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (product.specifications != null &&
-                  product.specifications!.isNotEmpty)
-                _buildDetailItem('المواصفات', product.specifications!),
+              if (product.category != null)
+                _buildDetailItem('الصنف', product.category!),
+              if (product.warehouse != null)
+                if (product.specifications != null &&
+                    product.specifications!.isNotEmpty)
+                  _buildDetailItem('المواصفات', product.specifications!),
               _buildDetailItem('المورد', product.supplierName),
-              if (product.model != null && product.model!.isNotEmpty)
-                _buildDetailItem('النموذج', product.model!),
               const Divider(),
               _buildDetailItem(
                 'سعر الشراء',
@@ -368,6 +390,8 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
               ),
               const Divider(),
               _buildDetailItem('الكمية المتاحة', '${product.quantity}'),
+              if (product.notes != null && product.notes!.isNotEmpty)
+                _buildDetailItem('ملاحظات', product.notes!),
             ],
           ),
         ),

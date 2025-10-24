@@ -58,7 +58,6 @@ CREATE TABLE products (
   name $textType,
   category $textNullableType,
   warehouse $textNullableType,
-  model $textNullableType,
   specifications $textNullableType,
   purchasePrice $realType,
   retailPrice $realType,
@@ -142,8 +141,8 @@ CREATE TABLE inventory_transactions (
     if (oldVersion < 3) {
       try {
         await db.execute('''
-INSERT INTO products (name, model, specifications, purchasePrice, retailPrice, wholesalePrice, bulkWholesalePrice, supplierName, quantity, dateAdded, notes)
-SELECT name, model, specifications, purchasePrice, retailPrice, wholesalePrice, bulkWholesalePrice, supplierName, quantity, dateAdded, notes FROM laptops;
+INSERT INTO products (name, specifications, purchasePrice, retailPrice, wholesalePrice, bulkWholesalePrice, supplierName, quantity, dateAdded, notes)
+SELECT name , specifications, purchasePrice, retailPrice, wholesalePrice, bulkWholesalePrice, supplierName, quantity, dateAdded, notes FROM laptops;
 ''');
         await db.execute('DROP TABLE IF EXISTS laptops');
         debugPrint('Migrated laptops to products');
@@ -196,7 +195,6 @@ SELECT productId, productName, 'استرجاع', quantityReturned, quantityAfter
 CREATE TABLE products (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
-  model TEXT,
   specifications TEXT,
   purchasePrice REAL NOT NULL,
   retailPrice REAL NOT NULL,
@@ -209,8 +207,8 @@ CREATE TABLE products (
 )
 ''');
         await db.execute('''
-INSERT INTO products (id, name, model, specifications, purchasePrice, retailPrice, wholesalePrice, bulkWholesalePrice, supplierName, quantity, dateAdded, notes)
-SELECT id, name, model, specifications, purchasePrice, retailPrice, wholesalePrice, bulkWholesalePrice, supplierName, quantity, dateAdded, notes
+INSERT INTO products (id, name , specifications, purchasePrice, retailPrice, wholesalePrice, bulkWholesalePrice, supplierName, quantity, dateAdded, notes)
+SELECT id, name  specifications, purchasePrice, retailPrice, wholesalePrice, bulkWholesalePrice, supplierName, quantity, dateAdded, notes
 FROM products_old
 ''');
         await db.execute('DROP TABLE products_old');
@@ -586,6 +584,52 @@ FROM sales s
     } catch (e) {
       debugPrint('Error deleting sale: $e');
       return 0;
+    }
+  }
+
+  Future<void> deleteAllData() async {
+    final db = await database;
+    try {
+      await db.transaction((txn) async {
+        // Delete all data from all tables
+        await txn.delete('sales');
+        await txn.delete('inventory_transactions');
+        await txn.delete('products');
+
+        debugPrint('Deleted all data from database');
+      });
+    } catch (e) {
+      debugPrint('Error deleting all data: $e');
+      rethrow;
+    }
+  }
+
+  // أو يمكن حذف قاعدة البيانات بالكامل وإعادة إنشائها:
+
+  Future<void> resetDatabase() async {
+    try {
+      final documentsDirectory = await getApplicationDocumentsDirectory();
+      final path = join(documentsDirectory.path, 'inventory_management.db');
+
+      // Close current database connection
+      if (_database != null) {
+        await _database!.close();
+        _database = null;
+      }
+
+      // Delete database file
+      final dbFile = File(path);
+      if (await dbFile.exists()) {
+        await dbFile.delete();
+        debugPrint('Database file deleted: $path');
+      }
+
+      // Reinitialize database
+      _database = await _initDB('inventory_management.db');
+      debugPrint('Database reset successfully');
+    } catch (e) {
+      debugPrint('Error resetting database: $e');
+      rethrow;
     }
   }
 }

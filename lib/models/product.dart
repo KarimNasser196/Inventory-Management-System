@@ -1,11 +1,8 @@
-import 'package:flutter/foundation.dart';
-
 class Product {
   final int? id;
   final String name;
   final String? category;
   final String? warehouse;
-  final String? model;
   final String? specifications;
   final double purchasePrice;
   final double retailPrice;
@@ -21,7 +18,7 @@ class Product {
     required this.name,
     this.category,
     this.warehouse,
-    this.model,
+
     this.specifications,
     required this.purchasePrice,
     required this.retailPrice,
@@ -39,7 +36,7 @@ class Product {
       name: map['name'] as String,
       category: map['category'] as String?,
       warehouse: map['warehouse'] as String?,
-      model: map['model'] as String?,
+
       specifications: map['specifications'] as String?,
       purchasePrice: (map['purchasePrice'] as num).toDouble(),
       retailPrice: (map['retailPrice'] as num).toDouble(),
@@ -58,7 +55,7 @@ class Product {
       'name': name,
       'category': category,
       'warehouse': warehouse,
-      'model': model,
+
       'specifications': specifications,
       'purchasePrice': purchasePrice,
       'retailPrice': retailPrice,
@@ -92,7 +89,7 @@ class Product {
       name: name ?? this.name,
       category: category ?? this.category,
       warehouse: warehouse ?? this.warehouse,
-      model: model ?? this.model,
+
       specifications: specifications ?? this.specifications,
       purchasePrice: purchasePrice ?? this.purchasePrice,
       retailPrice: retailPrice ?? this.retailPrice,

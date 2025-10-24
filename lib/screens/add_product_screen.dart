@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:soundtry/screens/cat_screen.dart';
@@ -18,7 +18,6 @@ class AddProductScreen extends StatefulWidget {
 class _AddProductScreenState extends State<AddProductScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
-  late TextEditingController _modelController;
   late TextEditingController _specController;
   late TextEditingController _purchasePriceController;
   late TextEditingController _retailPriceController;
@@ -39,7 +38,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     super.initState();
     _loadCategories();
     _nameController = TextEditingController(text: widget.product?.name ?? '');
-    _modelController = TextEditingController(text: widget.product?.model ?? '');
+
     _specController = TextEditingController(
       text: widget.product?.specifications ?? '',
     );
@@ -78,7 +77,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _modelController.dispose();
     _specController.dispose();
     _purchasePriceController.dispose();
     _retailPriceController.dispose();
@@ -216,13 +214,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           // الصف الثاني: الموديل، المواصفات، الكمية
                           Row(
                             children: [
-                              Expanded(
-                                child: _buildTextField(
-                                  _modelController,
-                                  'الموديل',
-                                  Icons.devices,
-                                ),
-                              ),
                               const SizedBox(width: 12),
                               Expanded(
                                 flex: 2,
@@ -434,7 +425,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       warehouse: _warehouseController.text.isEmpty
           ? null
           : _warehouseController.text,
-      model: _modelController.text.isEmpty ? null : _modelController.text,
+
       specifications: _specController.text.isEmpty
           ? null
           : _specController.text,
@@ -459,7 +450,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
           context,
         ).showSnackBar(const SnackBar(content: Text('تم إضافة المنتج بنجاح')));
         _nameController.clear();
-        _modelController.clear();
+
         _specController.clear();
         _purchasePriceController.clear();
         _retailPriceController.clear();

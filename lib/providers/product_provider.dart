@@ -20,7 +20,6 @@ class ProductProvider with ChangeNotifier {
       : _products.where((product) {
           final query = _searchQuery.toLowerCase();
           return product.name.toLowerCase().contains(query) ||
-              (product.model?.toLowerCase().contains(query) ?? false) ||
               (product.specifications?.toLowerCase().contains(query) ??
                   false) ||
               product.supplierName.toLowerCase().contains(query);
