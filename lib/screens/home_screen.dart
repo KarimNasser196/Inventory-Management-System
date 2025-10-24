@@ -31,21 +31,6 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('إدارة المخزون'),
         backgroundColor: Colors.blue,
-        actions: [
-          if (navigationProvider.selectedIndex == 1)
-            IconButton(
-              icon: const Icon(Icons.add),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AddProductScreen(),
-                  ),
-                );
-              },
-              tooltip: 'إضافة منتج',
-            ),
-        ],
       ),
       body: Row(
         children: [

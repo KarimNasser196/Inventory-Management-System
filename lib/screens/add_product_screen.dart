@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:soundtry/screens/cat_screen.dart';
@@ -31,14 +30,14 @@ class _AddProductScreenState extends State<AddProductScreen> {
   List<String> _categories = [];
   bool _isSaveHovered = false;
   bool _isSaving = false;
+  bool _categoriesLoaded = false;
   bool get _isEditing => widget.product != null;
 
   @override
   void initState() {
     super.initState();
-    _loadCategories();
-    _nameController = TextEditingController(text: widget.product?.name ?? '');
 
+    _nameController = TextEditingController(text: widget.product?.name ?? '');
     _specController = TextEditingController(
       text: widget.product?.specifications ?? '',
     );
@@ -63,14 +62,29 @@ class _AddProductScreenState extends State<AddProductScreen> {
     _warehouseController = TextEditingController(
       text: widget.product?.warehouse ?? '',
     );
-    _selectedCategory = widget.product?.category;
+
+    // تحميل الأصناف أولاً قبل تعيين القيمة المحددة
+    _loadCategories();
   }
 
   Future<void> _loadCategories() async {
     final prefs = await SharedPreferences.getInstance();
     final categoriesJson = prefs.getString('categories') ?? '[]';
+    final loadedCategories = List<String>.from(json.decode(categoriesJson));
+
     setState(() {
-      _categories = List<String>.from(json.decode(categoriesJson));
+      _categories = loadedCategories;
+      _categoriesLoaded = true;
+
+      // إذا كان المنتج موجوداً وله صنف
+      if (widget.product?.category != null &&
+          widget.product!.category!.isNotEmpty) {
+        // تأكد من إضافة الصنف إلى القائمة إذا لم يكن موجوداً
+        if (!_categories.contains(widget.product!.category!)) {
+          _categories.add(widget.product!.category!);
+        }
+        _selectedCategory = widget.product!.category;
+      }
     });
   }
 
@@ -91,6 +105,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 600;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'تعديل منتج' : 'إضافة منتج جديد'),
@@ -113,6 +128,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
       ),
       body: Consumer<ProductProvider>(
         builder: (context, provider, _) {
+          // انتظار تحميل الأصناف
+          if (!_categoriesLoaded) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
           if (provider.isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -166,7 +186,14 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                     border: OutlineInputBorder(),
                                     prefixIcon: Icon(Icons.category),
                                   ),
-                                  value: _selectedCategory,
+                                  // التحقق من أن القيمة موجودة في القائمة
+                                  value:
+                                      _selectedCategory != null &&
+                                          _categories.contains(
+                                            _selectedCategory,
+                                          )
+                                      ? _selectedCategory
+                                      : null,
                                   items: [
                                     const DropdownMenuItem(
                                       value: null,
@@ -211,10 +238,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
                           const SizedBox(height: 16),
 
-                          // الصف الثاني: الموديل، المواصفات، الكمية
+                          // الصف الثاني: المواصفات، الكمية
                           Row(
                             children: [
-                              const SizedBox(width: 12),
                               Expanded(
                                 flex: 2,
                                 child: _buildTextField(
@@ -425,7 +451,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
       warehouse: _warehouseController.text.isEmpty
           ? null
           : _warehouseController.text,
-
       specifications: _specController.text.isEmpty
           ? null
           : _specController.text,
@@ -450,7 +475,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
           context,
         ).showSnackBar(const SnackBar(content: Text('تم إضافة المنتج بنجاح')));
         _nameController.clear();
-
         _specController.clear();
         _purchasePriceController.clear();
         _retailPriceController.clear();

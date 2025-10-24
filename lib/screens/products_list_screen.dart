@@ -4,6 +4,8 @@ import '../providers/product_provider.dart';
 import '../models/product.dart';
 import 'add_product_screen.dart';
 
+enum ViewMode { cards, table }
+
 class ProductsListScreen extends StatefulWidget {
   const ProductsListScreen({super.key});
 
@@ -15,6 +17,7 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
   late TextEditingController _searchController;
   String? _selectedCategoryFilter;
   List<String> _availableCategories = [];
+  ViewMode _viewMode = ViewMode.cards;
 
   @override
   void initState() {
@@ -146,6 +149,51 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                         },
                       ),
                     ),
+                    const SizedBox(width: 12),
+                    // View mode toggle
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              Icons.grid_view,
+                              color: _viewMode == ViewMode.cards
+                                  ? Colors.blue
+                                  : Colors.grey,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _viewMode = ViewMode.cards;
+                              });
+                            },
+                            tooltip: 'عرض البطاقات',
+                          ),
+                          Container(
+                            width: 1,
+                            height: 24,
+                            color: Colors.grey[300],
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              Icons.table_rows,
+                              color: _viewMode == ViewMode.table
+                                  ? Colors.blue
+                                  : Colors.grey,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _viewMode = ViewMode.table;
+                              });
+                            },
+                            tooltip: 'عرض الجدول',
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(width: 16),
                     ElevatedButton.icon(
                       onPressed: () => _navigateToAddProduct(context),
@@ -167,7 +215,7 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
               ],
             ),
           ),
-          // Products grid
+          // Products grid or table
           Expanded(
             child: Consumer<ProductProvider>(
               builder: (context, provider, _) {
@@ -208,7 +256,9 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                   );
                 }
 
-                return _buildProductsGrid(context, filteredProducts, isMobile);
+                return _viewMode == ViewMode.cards
+                    ? _buildProductsGrid(context, filteredProducts, isMobile)
+                    : _buildProductsTable(context, filteredProducts, isMobile);
               },
             ),
           ),
@@ -233,6 +283,100 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
             child: _buildProductCard(context, product),
           );
         }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildProductsTable(
+    BuildContext context,
+    List<Product> products,
+    bool isMobile,
+  ) {
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(isMobile ? 16 : 24),
+      child: Card(
+        elevation: 4,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            headingRowColor: MaterialStateProperty.all(Colors.blue[50]),
+            columns: const [
+              DataColumn(label: Text('الاسم')),
+              DataColumn(label: Text('الصنف')),
+              DataColumn(label: Text('المخزن')),
+              DataColumn(label: Text('المورد')),
+              DataColumn(label: Text('الكمية')),
+
+              DataColumn(label: Text('إجراءات')),
+            ],
+            rows: products.map((product) {
+              return DataRow(
+                cells: [
+                  DataCell(
+                    Text(
+                      product.name,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  DataCell(Text(product.category ?? '-')),
+                  DataCell(Text(product.warehouse ?? '-')),
+                  DataCell(Text(product.supplierName)),
+                  DataCell(
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: product.quantity > 0
+                            ? Colors.green[50]
+                            : Colors.red[50],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${product.quantity}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: product.quantity > 0
+                              ? Colors.green[700]
+                              : Colors.red[700],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  DataCell(
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.visibility, size: 20),
+                          onPressed: () =>
+                              _showProductDetails(context, product),
+                          tooltip: 'عرض',
+                          color: Colors.blue,
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.edit, size: 20),
+                          onPressed: () =>
+                              _navigateToEditProduct(context, product),
+                          tooltip: 'تعديل',
+                          color: Colors.orange,
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete, size: 20),
+                          onPressed: () => _confirmDelete(context, product),
+                          tooltip: 'حذف',
+                          color: Colors.red,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            }).toList(),
+          ),
+        ),
       ),
     );
   }
@@ -585,12 +729,12 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                       valueColor: Colors.blue[700],
                     ),
                     _buildDetailItem(
-                      'سعر الجملة',
+                      'سعر الجملة (10+)',
                       '${product.wholesalePrice.toStringAsFixed(2)} جنيه',
                       valueColor: Colors.green[700],
                     ),
                     _buildDetailItem(
-                      'سعر جملة الجملة',
+                      'سعر جملة الجملة (50+)',
                       '${product.bulkWholesalePrice.toStringAsFixed(2)} جنيه',
                       valueColor: Colors.orange[700],
                     ),

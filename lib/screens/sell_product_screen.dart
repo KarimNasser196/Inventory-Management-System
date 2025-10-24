@@ -23,12 +23,28 @@ class _SellProductScreenState extends State<SellProductScreen>
   final _searchController = TextEditingController();
   final _priceController = TextEditingController();
   late TabController _tabController;
+  String? _selectedCategoryFilter;
+  List<String> _availableCategories = [];
+  Set<int> _visiblePricesProducts = {}; // لتتبع المنتجات التي تم إظهار أسعارها
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     Provider.of<ProductProvider>(context, listen: false).refreshProducts();
+    _loadCategories();
+  }
+
+  void _loadCategories() {
+    final provider = Provider.of<ProductProvider>(context, listen: false);
+    final categories = provider.products
+        .where((p) => p.category != null && p.category!.isNotEmpty)
+        .map((p) => p.category!)
+        .toSet()
+        .toList();
+    setState(() {
+      _availableCategories = categories;
+    });
   }
 
   @override
@@ -37,6 +53,19 @@ class _SellProductScreenState extends State<SellProductScreen>
     _priceController.dispose();
     _tabController.dispose();
     super.dispose();
+  }
+
+  List<Product> _getFilteredProducts(List<Product> products) {
+    var filtered = products;
+
+    // Filter by category
+    if (_selectedCategoryFilter != null) {
+      filtered = filtered
+          .where((p) => p.category == _selectedCategoryFilter)
+          .toList();
+    }
+
+    return filtered;
   }
 
   @override
@@ -76,6 +105,8 @@ class _SellProductScreenState extends State<SellProductScreen>
           return const Center(child: CircularProgressIndicator());
         }
 
+        final filteredProducts = _getFilteredProducts(provider.products);
+
         return Column(
           children: [
             // نموذج البيع
@@ -110,6 +141,34 @@ class _SellProductScreenState extends State<SellProductScreen>
                                 ),
                                 onChanged: (value) {
                                   provider.setSearchQuery(value);
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: DropdownButtonFormField<String?>(
+                                value: _selectedCategoryFilter,
+                                decoration: const InputDecoration(
+                                  labelText: 'الصنف',
+                                  border: OutlineInputBorder(),
+                                  prefixIcon: Icon(Icons.filter_list),
+                                ),
+                                items: [
+                                  const DropdownMenuItem(
+                                    value: null,
+                                    child: Text('الكل'),
+                                  ),
+                                  ..._availableCategories.map(
+                                    (cat) => DropdownMenuItem(
+                                      value: cat,
+                                      child: Text(cat),
+                                    ),
+                                  ),
+                                ],
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectedCategoryFilter = value;
+                                  });
                                 },
                               ),
                             ),
@@ -228,13 +287,14 @@ class _SellProductScreenState extends State<SellProductScreen>
                         DataColumn(label: Text('المخزن')),
                         DataColumn(label: Text('المورد')),
                         DataColumn(label: Text('الكمية')),
-                        DataColumn(label: Text('سعر الشراء')),
-                        DataColumn(label: Text('فردي')),
-                        DataColumn(label: Text('جملة')),
-                        DataColumn(label: Text('جملة جملة')),
+                        DataColumn(label: Text('الأسعار')),
                       ],
-                      rows: provider.products.map((product) {
+                      rows: filteredProducts.map((product) {
                         final isSelected = _selectedProduct?.id == product.id;
+                        final isPriceVisible = _visiblePricesProducts.contains(
+                          product.id,
+                        );
+
                         return DataRow(
                           selected: isSelected,
                           color: MaterialStateProperty.resolveWith<Color?>((
@@ -245,19 +305,6 @@ class _SellProductScreenState extends State<SellProductScreen>
                             }
                             return null;
                           }),
-                          onSelectChanged: (selected) {
-                            setState(() {
-                              _selectedProduct = selected == true
-                                  ? product
-                                  : null;
-                              if (selected == true) {
-                                _searchController.text = product.name;
-                                _priceController.text = product.retailPrice
-                                    .toStringAsFixed(2);
-                                _customPrice = product.retailPrice;
-                              }
-                            });
-                          },
                           cells: [
                             DataCell(
                               Radio<int?>(
@@ -290,17 +337,80 @@ class _SellProductScreenState extends State<SellProductScreen>
                               ),
                             ),
                             DataCell(
-                              Text(product.purchasePrice.toStringAsFixed(2)),
-                            ),
-                            DataCell(
-                              Text(product.retailPrice.toStringAsFixed(2)),
-                            ),
-                            DataCell(
-                              Text(product.wholesalePrice.toStringAsFixed(2)),
-                            ),
-                            DataCell(
-                              Text(
-                                product.bulkWholesalePrice.toStringAsFixed(2),
+                              Row(
+                                children: [
+                                  if (isPriceVisible)
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue[50],
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'شراء: ${product.purchasePrice.toStringAsFixed(2)}',
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'فردي: ${product.retailPrice.toStringAsFixed(2)}',
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'جملة: ${product.wholesalePrice.toStringAsFixed(2)}',
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'ج.ج: ${product.bulkWholesalePrice.toStringAsFixed(2)}',
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  const SizedBox(width: 8),
+                                  IconButton(
+                                    icon: Icon(
+                                      isPriceVisible
+                                          ? Icons.visibility_off
+                                          : Icons.visibility,
+                                      color: Colors.blue,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        if (isPriceVisible) {
+                                          _visiblePricesProducts.remove(
+                                            product.id,
+                                          );
+                                        } else {
+                                          _visiblePricesProducts.add(
+                                            product.id!,
+                                          );
+                                        }
+                                      });
+                                    },
+                                    tooltip: isPriceVisible
+                                        ? 'إخفاء الأسعار'
+                                        : 'إظهار الأسعار',
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -349,7 +459,6 @@ class _SellProductScreenState extends State<SellProductScreen>
                   DataColumn(label: Text('الإجمالي')),
                   DataColumn(label: Text('الربح')),
                   DataColumn(label: Text('التاريخ')),
-                  DataColumn(label: Text('الملاحظات')),
                   DataColumn(label: Text('إجراءات')),
                 ],
                 rows: provider.sales.map((sale) {
@@ -393,7 +502,6 @@ class _SellProductScreenState extends State<SellProductScreen>
                           ).format(sale.saleDateTime),
                         ),
                       ),
-                      DataCell(Text(sale.notes ?? '-')),
                       DataCell(
                         IconButton(
                           icon: const Icon(Icons.reply, color: Colors.orange),
@@ -597,6 +705,7 @@ class _SellProductScreenState extends State<SellProductScreen>
         _priceController.clear();
       });
       provider.setSearchQuery('');
+      _loadCategories();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
