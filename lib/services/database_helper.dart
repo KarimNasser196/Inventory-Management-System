@@ -28,7 +28,7 @@ class DatabaseHelper {
         return await databaseFactory.openDatabase(
           path,
           options: OpenDatabaseOptions(
-            version: 5,
+            version: 6, // تم التحديث من 5 إلى 6
             onCreate: _createDB,
             onUpgrade: _upgradeDB,
           ),
@@ -52,6 +52,7 @@ class DatabaseHelper {
     debugPrint('Creating database tables...');
 
     try {
+      // جدول المنتجات
       await db.execute('''
 CREATE TABLE products (
   id $idType,
@@ -74,6 +75,7 @@ CREATE TABLE products (
       );
       debugPrint('Created products table');
 
+      // جدول المبيعات
       await db.execute('''
 CREATE TABLE sales (
   id $idType,
@@ -96,6 +98,7 @@ CREATE TABLE sales (
       await db.execute('CREATE INDEX idx_saleDateTime ON sales(saleDateTime)');
       debugPrint('Created sales table');
 
+      // جدول حركة المخزون
       await db.execute('''
 CREATE TABLE inventory_transactions (
   id $idType,
@@ -117,6 +120,42 @@ CREATE TABLE inventory_transactions (
         'CREATE INDEX idx_dateTime_inventory ON inventory_transactions(dateTime)',
       );
       debugPrint('Created inventory_transactions table');
+
+      // جدول الصيانة (جديد)
+      await db.execute('''
+CREATE TABLE maintenance_records (
+  id $idType,
+  deviceType $textType,
+  deviceBrand $textType,
+  deviceModel $textType,
+  serialNumber $textNullableType,
+  customerName $textType,
+  customerPhone $textType,
+  problemDescription $textType,
+  status $textType,
+  estimatedCost $realType,
+  actualCost $realType,
+  paidAmount $realType,
+  receivedDate $textType,
+  expectedDeliveryDate $textNullableType,
+  actualDeliveryDate $textNullableType,
+  technicianNotes $textNullableType,
+  usedParts $textNullableType,
+  customerNotes $textNullableType,
+  isWarranty $integerType,
+  warrantyDays $integerType
+)
+''');
+      await db.execute(
+        'CREATE INDEX idx_customerPhone ON maintenance_records(customerPhone)',
+      );
+      await db.execute(
+        'CREATE INDEX idx_status ON maintenance_records(status)',
+      );
+      await db.execute(
+        'CREATE INDEX idx_receivedDate ON maintenance_records(receivedDate)',
+      );
+      debugPrint('Created maintenance_records table');
     } catch (e) {
       debugPrint('Error creating tables: $e');
       rethrow;
@@ -125,6 +164,8 @@ CREATE TABLE inventory_transactions (
 
   Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
     debugPrint('Upgrading database from version $oldVersion to $newVersion');
+
+    // إنشاء نسخة احتياطية
     try {
       final documentsDirectory = await getApplicationDocumentsDirectory();
       final dbPath = join(documentsDirectory.path, 'inventory_management.db');
@@ -138,17 +179,19 @@ CREATE TABLE inventory_transactions (
       debugPrint('Error backing up database: $e');
     }
 
+    // الترقيات القديمة
     if (oldVersion < 3) {
       try {
         await db.execute('''
 INSERT INTO products (name, specifications, purchasePrice, retailPrice, wholesalePrice, bulkWholesalePrice, supplierName, quantity, dateAdded, notes)
-SELECT name , specifications, purchasePrice, retailPrice, wholesalePrice, bulkWholesalePrice, supplierName, quantity, dateAdded, notes FROM laptops;
+SELECT name, specifications, purchasePrice, retailPrice, wholesalePrice, bulkWholesalePrice, supplierName, quantity, dateAdded, notes FROM laptops;
 ''');
         await db.execute('DROP TABLE IF EXISTS laptops');
         debugPrint('Migrated laptops to products');
       } catch (e) {
         debugPrint('Error migrating laptops: $e');
       }
+
       try {
         await db.execute(
           'ALTER TABLE sales ADD COLUMN purchasePrice REAL NOT NULL DEFAULT 0',
@@ -157,6 +200,7 @@ SELECT name , specifications, purchasePrice, retailPrice, wholesalePrice, bulkWh
       } catch (e) {
         debugPrint('Error adding purchasePrice to sales: $e');
       }
+
       try {
         await db.execute('''
 INSERT INTO inventory_transactions (productId, productName, transactionType, quantityChange, quantityAfter, dateTime, notes)
@@ -167,6 +211,7 @@ SELECT productId, productName, 'استرجاع', quantityReturned, quantityAfter
       } catch (e) {
         debugPrint('Error migrating returns: $e');
       }
+
       try {
         await db.execute(
           'CREATE INDEX idx_productId_sales ON sales(productId)',
@@ -188,6 +233,7 @@ SELECT productId, productName, 'استرجاع', quantityReturned, quantityAfter
         debugPrint('Error adding indexes: $e');
       }
     }
+
     if (oldVersion < 4) {
       try {
         await db.execute('ALTER TABLE products RENAME TO products_old');
@@ -207,8 +253,8 @@ CREATE TABLE products (
 )
 ''');
         await db.execute('''
-INSERT INTO products (id, name , specifications, purchasePrice, retailPrice, wholesalePrice, bulkWholesalePrice, supplierName, quantity, dateAdded, notes)
-SELECT id, name  specifications, purchasePrice, retailPrice, wholesalePrice, bulkWholesalePrice, supplierName, quantity, dateAdded, notes
+INSERT INTO products (id, name, specifications, purchasePrice, retailPrice, wholesalePrice, bulkWholesalePrice, supplierName, quantity, dateAdded, notes)
+SELECT id, name, specifications, purchasePrice, retailPrice, wholesalePrice, bulkWholesalePrice, supplierName, quantity, dateAdded, notes
 FROM products_old
 ''');
         await db.execute('DROP TABLE products_old');
@@ -220,6 +266,7 @@ FROM products_old
         debugPrint('Error migrating products table: $e');
       }
     }
+
     if (oldVersion < 5) {
       try {
         await db.execute(
@@ -230,13 +277,57 @@ FROM products_old
         debugPrint('Error adding totalAmount to sales: $e');
       }
     }
+
+    // الترقية الجديدة: إضافة جدول الصيانة
+    if (oldVersion < 6) {
+      try {
+        await db.execute('''
+CREATE TABLE maintenance_records (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  deviceType TEXT NOT NULL,
+  deviceBrand TEXT NOT NULL,
+  deviceModel TEXT NOT NULL,
+  serialNumber TEXT,
+  customerName TEXT NOT NULL,
+  customerPhone TEXT NOT NULL,
+  problemDescription TEXT NOT NULL,
+  status TEXT NOT NULL,
+  estimatedCost REAL NOT NULL,
+  actualCost REAL NOT NULL,
+  paidAmount REAL NOT NULL,
+  receivedDate TEXT NOT NULL,
+  expectedDeliveryDate TEXT,
+  actualDeliveryDate TEXT,
+  technicianNotes TEXT,
+  usedParts TEXT,
+  customerNotes TEXT,
+  isWarranty INTEGER NOT NULL,
+  warrantyDays INTEGER
+)
+''');
+        await db.execute(
+          'CREATE INDEX idx_customerPhone ON maintenance_records(customerPhone)',
+        );
+        await db.execute(
+          'CREATE INDEX idx_status ON maintenance_records(status)',
+        );
+        await db.execute(
+          'CREATE INDEX idx_receivedDate ON maintenance_records(receivedDate)',
+        );
+        debugPrint('Created maintenance_records table');
+      } catch (e) {
+        debugPrint('Error creating maintenance_records table: $e');
+      }
+    }
   }
+
+  // ========== دوال المنتجات ==========
 
   Future<List<Map<String, dynamic>>> getProducts() async {
     final db = await database;
     try {
       final products = await db.query('products');
-      debugPrint('Fetched ${products.length} products: $products');
+      debugPrint('Fetched ${products.length} products');
       return products;
     } catch (e) {
       debugPrint('Error fetching products: $e');
@@ -252,10 +343,10 @@ FROM products_old
         product,
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
-      debugPrint('Inserted product with id: $id, data: $product');
+      debugPrint('Inserted product with id: $id');
       return id;
     } catch (e) {
-      debugPrint('Error inserting product: $e, data: $product');
+      debugPrint('Error inserting product: $e');
       return -1;
     }
   }
@@ -263,27 +354,16 @@ FROM products_old
   Future<int> updateProduct(int id, Map<String, dynamic> product) async {
     final db = await database;
     try {
-      final existing = await db.query(
-        'products',
-        where: 'id = ?',
-        whereArgs: [id],
-      );
-      if (existing.isEmpty) {
-        debugPrint('Error: Product ID $id not found in database');
-        return 0;
-      }
       final result = await db.update(
         'products',
         product,
         where: 'id = ?',
         whereArgs: [id],
       );
-      debugPrint(
-        'Updated product id $id: $result row(s) affected, data: $product',
-      );
+      debugPrint('Updated product id $id: $result row(s) affected');
       return result;
     } catch (e) {
-      debugPrint('Error updating product id $id: $e, data: $product');
+      debugPrint('Error updating product: $e');
       return 0;
     }
   }
@@ -296,7 +376,7 @@ FROM products_old
         where: 'id = ?',
         whereArgs: [id],
       );
-      debugPrint('Deleted product id $id: $result row(s) affected');
+      debugPrint('Deleted product id $id');
       return result;
     } catch (e) {
       debugPrint('Error deleting product: $e');
@@ -307,89 +387,21 @@ FROM products_old
   Future<int> updateProductQuantity(int productId, int newQuantity) async {
     final db = await database;
     try {
-      final existing = await db.query(
-        'products',
-        where: 'id = ?',
-        whereArgs: [productId],
-      );
-      if (existing.isEmpty) {
-        debugPrint('Error: Product ID $productId not found in database');
-        return 0;
-      }
       final result = await db.update(
         'products',
         {'quantity': newQuantity},
         where: 'id = ?',
         whereArgs: [productId],
       );
-      debugPrint(
-        'Updated quantity for product id $productId to $newQuantity: $result row(s) affected',
-      );
+      debugPrint('Updated quantity for product id $productId to $newQuantity');
       return result;
     } catch (e) {
-      debugPrint('Error updating quantity for product id $productId: $e');
+      debugPrint('Error updating quantity: $e');
       return 0;
     }
   }
 
-  Future<int> decrementProductQuantity(int productId, int amount) async {
-    final db = await database;
-    try {
-      final result = await db.query(
-        'products',
-        columns: ['quantity'],
-        where: 'id = ?',
-        whereArgs: [productId],
-      );
-      if (result.isNotEmpty) {
-        int currentQuantity = result.first['quantity'] as int;
-        int newQuantity = currentQuantity - amount;
-        if (newQuantity < 0) newQuantity = 0;
-        final updateResult = await updateProductQuantity(
-          productId,
-          newQuantity,
-        );
-        debugPrint(
-          'Decremented quantity for product id $productId by $amount, new quantity: $newQuantity',
-        );
-        return updateResult;
-      }
-      debugPrint('No product found with id $productId');
-      return 0;
-    } catch (e) {
-      debugPrint('Error decrementing quantity for product id $productId: $e');
-      return 0;
-    }
-  }
-
-  Future<int> incrementProductQuantity(int productId, int amount) async {
-    final db = await database;
-    try {
-      final result = await db.query(
-        'products',
-        columns: ['quantity'],
-        where: 'id = ?',
-        whereArgs: [productId],
-      );
-      if (result.isNotEmpty) {
-        int currentQuantity = result.first['quantity'] as int;
-        int newQuantity = currentQuantity + amount;
-        final updateResult = await updateProductQuantity(
-          productId,
-          newQuantity,
-        );
-        debugPrint(
-          'Incremented quantity for product id $productId by $amount, new quantity: $newQuantity',
-        );
-        return updateResult;
-      }
-      debugPrint('No product found with id $productId');
-      return 0;
-    } catch (e) {
-      debugPrint('Error incrementing quantity for product id $productId: $e');
-      return 0;
-    }
-  }
+  // ========== دوال المبيعات ==========
 
   Future<int> insertSale(Map<String, dynamic> sale) async {
     final db = await database;
@@ -399,10 +411,10 @@ FROM products_old
         sale,
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
-      debugPrint('Inserted sale with id: $id, data: $sale');
+      debugPrint('Inserted sale with id: $id');
       return id;
     } catch (e) {
-      debugPrint('Error inserting sale: $e, data: $sale');
+      debugPrint('Error inserting sale: $e');
       return -1;
     }
   }
@@ -419,141 +431,6 @@ FROM products_old
     }
   }
 
-  Future<List<Map<String, dynamic>>> getSalesByProduct(int productId) async {
-    final db = await database;
-    try {
-      final sales = await db.query(
-        'sales',
-        where: 'productId = ?',
-        whereArgs: [productId],
-        orderBy: 'saleDateTime DESC',
-      );
-      debugPrint('Fetched ${sales.length} sales for product id $productId');
-      return sales;
-    } catch (e) {
-      debugPrint('Error fetching sales for product $productId: $e');
-      return [];
-    }
-  }
-
-  Future<int> insertInventoryTransaction(
-    Map<String, dynamic> transaction,
-  ) async {
-    final db = await database;
-    try {
-      final id = await db.insert(
-        'inventory_transactions',
-        transaction,
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-      debugPrint(
-        'Inserted inventory transaction with id: $id, data: $transaction',
-      );
-      return id;
-    } catch (e) {
-      debugPrint(
-        'Error inserting inventory transaction: $e, data: $transaction',
-      );
-      return -1;
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> getInventoryTransactions(
-    int productId,
-  ) async {
-    final db = await database;
-    try {
-      final transactions = await db.query(
-        'inventory_transactions',
-        where: 'productId = ?',
-        whereArgs: [productId],
-        orderBy: 'dateTime DESC',
-      );
-      debugPrint(
-        'Fetched ${transactions.length} inventory transactions for product id $productId',
-      );
-      return transactions;
-    } catch (e) {
-      debugPrint(
-        'Error fetching inventory transactions for product $productId: $e',
-      );
-      return [];
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> getAllInventoryTransactions() async {
-    final db = await database;
-    try {
-      final transactions = await db.query(
-        'inventory_transactions',
-        orderBy: 'dateTime DESC',
-      );
-      debugPrint('Fetched ${transactions.length} inventory transactions');
-      return transactions;
-    } catch (e) {
-      debugPrint('Error fetching all inventory transactions: $e');
-      return [];
-    }
-  }
-
-  Future<Map<String, dynamic>> getInventorySummary() async {
-    final db = await database;
-    try {
-      final products = await db.query('products');
-      final sales = await db.query('sales');
-      int totalProducts = products.length;
-      int totalQuantityInStock = products.fold<int>(
-        0,
-        (sum, product) => sum + (product['quantity'] as int? ?? 0),
-      );
-      double totalSalesAmount = sales.fold<double>(
-        0,
-        (sum, sale) => sum + (sale['totalAmount'] as num? ?? 0).toDouble(),
-      );
-      debugPrint(
-        'Inventory summary: $totalProducts products, $totalQuantityInStock in stock, $totalSalesAmount sales amount',
-      );
-      return {
-        'totalProducts': totalProducts,
-        'totalQuantityInStock': totalQuantityInStock,
-        'totalSalesAmount': totalSalesAmount,
-        'totalSalesCount': sales.length,
-      };
-    } catch (e) {
-      debugPrint('Error getting inventory summary: $e');
-      return {
-        'totalProducts': 0,
-        'totalQuantityInStock': 0,
-        'totalSalesAmount': 0.0,
-        'totalSalesCount': 0,
-      };
-    }
-  }
-
-  Future<double> calculateTotalProfit() async {
-    final db = await database;
-    try {
-      final result = await db.rawQuery('''
-SELECT SUM((s.unitPrice - s.purchasePrice) * s.quantitySold) as totalProfit
-FROM sales s
-''');
-      final totalProfit =
-          (result.first['totalProfit'] as num?)?.toDouble() ?? 0;
-      debugPrint('Calculated total profit: $totalProfit');
-      return totalProfit;
-    } catch (e) {
-      debugPrint('Error calculating total profit: $e');
-      return 0.0;
-    }
-  }
-
-  Future close() async {
-    final db = await database;
-    await db.close();
-    _database = null;
-    debugPrint('Database closed');
-  }
-
   Future<int> updateSale(int saleId, Map<String, dynamic> saleData) async {
     final db = await database;
     try {
@@ -563,7 +440,7 @@ FROM sales s
         where: 'id = ?',
         whereArgs: [saleId],
       );
-      debugPrint('Updated sale id $saleId: $result row(s) affected');
+      debugPrint('Updated sale id $saleId');
       return result;
     } catch (e) {
       debugPrint('Error updating sale: $e');
@@ -579,7 +456,7 @@ FROM sales s
         where: 'id = ?',
         whereArgs: [saleId],
       );
-      debugPrint('Deleted sale id $saleId: $result row(s) affected');
+      debugPrint('Deleted sale id $saleId');
       return result;
     } catch (e) {
       debugPrint('Error deleting sale: $e');
@@ -587,15 +464,185 @@ FROM sales s
     }
   }
 
+  // ========== دوال حركة المخزون ==========
+
+  Future<int> insertInventoryTransaction(
+    Map<String, dynamic> transaction,
+  ) async {
+    final db = await database;
+    try {
+      final id = await db.insert(
+        'inventory_transactions',
+        transaction,
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      debugPrint('Inserted inventory transaction with id: $id');
+      return id;
+    } catch (e) {
+      debugPrint('Error inserting inventory transaction: $e');
+      return -1;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getAllInventoryTransactions() async {
+    final db = await database;
+    try {
+      final transactions = await db.query(
+        'inventory_transactions',
+        orderBy: 'dateTime DESC',
+      );
+      debugPrint('Fetched ${transactions.length} inventory transactions');
+      return transactions;
+    } catch (e) {
+      debugPrint('Error fetching inventory transactions: $e');
+      return [];
+    }
+  }
+
+  // ========== دوال الصيانة (جديدة) ==========
+
+  Future<List<Map<String, dynamic>>> getMaintenanceRecords() async {
+    final db = await database;
+    try {
+      final records = await db.query(
+        'maintenance_records',
+        orderBy: 'receivedDate DESC',
+      );
+      debugPrint('Fetched ${records.length} maintenance records');
+      return records;
+    } catch (e) {
+      debugPrint('Error fetching maintenance records: $e');
+      return [];
+    }
+  }
+
+  Future<int> insertMaintenanceRecord(Map<String, dynamic> record) async {
+    final db = await database;
+    try {
+      final id = await db.insert(
+        'maintenance_records',
+        record,
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      debugPrint('Inserted maintenance record with id: $id');
+      return id;
+    } catch (e) {
+      debugPrint('Error inserting maintenance record: $e');
+      return -1;
+    }
+  }
+
+  Future<int> updateMaintenanceRecord(
+    int id,
+    Map<String, dynamic> record,
+  ) async {
+    final db = await database;
+    try {
+      final result = await db.update(
+        'maintenance_records',
+        record,
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+      debugPrint('Updated maintenance record id $id: $result row(s) affected');
+      return result;
+    } catch (e) {
+      debugPrint('Error updating maintenance record: $e');
+      return 0;
+    }
+  }
+
+  Future<int> deleteMaintenanceRecord(int id) async {
+    final db = await database;
+    try {
+      final result = await db.delete(
+        'maintenance_records',
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+      debugPrint('Deleted maintenance record id $id: $result row(s) affected');
+      return result;
+    } catch (e) {
+      debugPrint('Error deleting maintenance record: $e');
+      return 0;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getMaintenanceRecordsByStatus(
+    String status,
+  ) async {
+    final db = await database;
+    try {
+      final records = await db.query(
+        'maintenance_records',
+        where: 'status = ?',
+        whereArgs: [status],
+        orderBy: 'receivedDate DESC',
+      );
+      return records;
+    } catch (e) {
+      debugPrint('Error fetching maintenance records by status: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> getMaintenanceStatistics() async {
+    final db = await database;
+    try {
+      final records = await db.query('maintenance_records');
+
+      int total = records.length;
+      int pending = records
+          .where(
+            (r) => r['status'] == 'قيد الفحص' || r['status'] == 'قيد الإصلاح',
+          )
+          .length;
+      int ready = records.where((r) => r['status'] == 'جاهز للاستلام').length;
+      int completed = records.where((r) => r['status'] == 'تم التسليم').length;
+
+      double totalRevenue = records
+          .where((r) => r['status'] == 'تم التسليم')
+          .fold<double>(
+            0,
+            (sum, r) => sum + (r['actualCost'] as num).toDouble(),
+          );
+
+      double totalPaid = records.fold<double>(
+        0,
+        (sum, r) => sum + (r['paidAmount'] as num).toDouble(),
+      );
+
+      return {
+        'total': total,
+        'pending': pending,
+        'ready': ready,
+        'completed': completed,
+        'totalRevenue': totalRevenue,
+        'totalPaid': totalPaid,
+      };
+    } catch (e) {
+      debugPrint('Error getting maintenance statistics: $e');
+      return {
+        'total': 0,
+        'pending': 0,
+        'ready': 0,
+        'completed': 0,
+        'totalRevenue': 0.0,
+        'totalPaid': 0.0,
+      };
+    }
+  }
+
+  // ========== دوال عامة ==========
+
   Future<void> deleteAllData() async {
     final db = await database;
     try {
       await db.transaction((txn) async {
-        // Delete all data from all tables
         await txn.delete('sales');
         await txn.delete('inventory_transactions');
         await txn.delete('products');
-
+        await txn.delete('maintenance_records'); // تم الإضافة
         debugPrint('Deleted all data from database');
       });
     } catch (e) {
@@ -604,32 +651,34 @@ FROM sales s
     }
   }
 
-  // أو يمكن حذف قاعدة البيانات بالكامل وإعادة إنشائها:
-
   Future<void> resetDatabase() async {
     try {
       final documentsDirectory = await getApplicationDocumentsDirectory();
       final path = join(documentsDirectory.path, 'inventory_management.db');
 
-      // Close current database connection
       if (_database != null) {
         await _database!.close();
         _database = null;
       }
 
-      // Delete database file
       final dbFile = File(path);
       if (await dbFile.exists()) {
         await dbFile.delete();
         debugPrint('Database file deleted: $path');
       }
 
-      // Reinitialize database
       _database = await _initDB('inventory_management.db');
       debugPrint('Database reset successfully');
     } catch (e) {
       debugPrint('Error resetting database: $e');
       rethrow;
     }
+  }
+
+  Future close() async {
+    final db = await database;
+    await db.close();
+    _database = null;
+    debugPrint('Database closed');
   }
 }
