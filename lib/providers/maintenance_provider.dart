@@ -1,4 +1,4 @@
-// lib/providers/maintenance_provider.dart
+// lib/providers/maintenance_provider.dart (نسخة مبسطة)
 
 import 'package:flutter/foundation.dart';
 import '../models/maintenance_record.dart';
@@ -16,9 +16,8 @@ class MaintenanceProvider with ChangeNotifier {
   // إحصائيات
   int get totalRecords => _maintenanceRecords.length;
 
-  int get pendingRecords => _maintenanceRecords
-      .where((r) => r.status == 'قيد الفحص' || r.status == 'قيد الإصلاح')
-      .length;
+  int get pendingRecords =>
+      _maintenanceRecords.where((r) => r.status == 'قيد الإصلاح').length;
 
   int get readyForPickup =>
       _maintenanceRecords.where((r) => r.status == 'جاهز للاستلام').length;
@@ -28,7 +27,7 @@ class MaintenanceProvider with ChangeNotifier {
 
   double get totalRevenue => _maintenanceRecords
       .where((r) => r.status == 'تم التسليم')
-      .fold<double>(0, (sum, r) => sum + r.actualCost);
+      .fold<double>(0, (sum, r) => sum + r.cost);
 
   double get totalPaid =>
       _maintenanceRecords.fold<double>(0, (sum, r) => sum + r.paidAmount);
@@ -150,9 +149,13 @@ class MaintenanceProvider with ChangeNotifier {
   Future<void> updateStatus(int id, String newStatus) async {
     try {
       final record = _maintenanceRecords.firstWhere((r) => r.id == id);
+
+      // إذا كانت الحالة الجديدة "تم التسليم"، قم بإضافة تاريخ التسليم
       final updatedRecord = record.copyWith(
         status: newStatus,
-        actualDeliveryDate: newStatus == 'تم التسليم' ? DateTime.now() : null,
+        deliveryDate: newStatus == 'تم التسليم'
+            ? DateTime.now()
+            : record.deliveryDate,
       );
 
       await updateMaintenanceRecord(updatedRecord);
@@ -167,8 +170,8 @@ class MaintenanceProvider with ChangeNotifier {
       final record = _maintenanceRecords.firstWhere((r) => r.id == id);
       final newPaidAmount = record.paidAmount + amount;
 
-      if (newPaidAmount > record.actualCost) {
-        throw Exception('المبلغ المدفوع أكبر من التكلفة الفعلية');
+      if (newPaidAmount > record.cost) {
+        throw Exception('المبلغ المدفوع أكبر من التكلفة');
       }
 
       final updatedRecord = record.copyWith(paidAmount: newPaidAmount);
@@ -189,12 +192,25 @@ class MaintenanceProvider with ChangeNotifier {
     final lowerQuery = query.toLowerCase();
     return _maintenanceRecords.where((r) {
       return r.customerName.toLowerCase().contains(lowerQuery) ||
-          r.customerPhone.contains(query) ||
           r.deviceType.toLowerCase().contains(lowerQuery) ||
-          r.deviceBrand.toLowerCase().contains(lowerQuery) ||
-          r.deviceModel.toLowerCase().contains(lowerQuery) ||
-          (r.serialNumber?.toLowerCase().contains(lowerQuery) ?? false);
+          r.problemDescription.toLowerCase().contains(lowerQuery) ||
+          r.repairCode.contains(query); // البحث بالكود
     }).toList();
+  }
+
+  Future<MaintenanceRecord?> getRecordByCode(String repairCode) async {
+    try {
+      final dbHelper = DatabaseHelper.instance;
+      final recordData = await dbHelper.getMaintenanceRecordByCode(repairCode);
+
+      if (recordData != null) {
+        return MaintenanceRecord.fromMap(recordData);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error getting record by code: $e');
+      return null;
+    }
   }
 
   Map<String, int> getStatusStatistics() {
@@ -203,14 +219,5 @@ class MaintenanceProvider with ChangeNotifier {
       stats[record.status] = (stats[record.status] ?? 0) + 1;
     }
     return stats;
-  }
-
-  List<MaintenanceRecord> getOverdueRecords() {
-    final now = DateTime.now();
-    return _maintenanceRecords.where((r) {
-      if (r.expectedDeliveryDate == null) return false;
-      if (r.status == 'تم التسليم' || r.status == 'ملغي') return false;
-      return r.expectedDeliveryDate!.isBefore(now);
-    }).toList();
   }
 }

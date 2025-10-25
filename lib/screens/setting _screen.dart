@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/database_helper.dart';
 import '../providers/product_provider.dart';
+import '../providers/maintenance_provider.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -110,7 +111,7 @@ class SettingsScreen extends StatelessWidget {
                             ),
                           ),
                           subtitle: const Text(
-                            'تحذير: سيتم حذف جميع المنتجات والمبيعات وحركات المخزون نهائياً',
+                            'تحذير: سيتم حذف جميع المنتجات والمبيعات وحركات المخزون وسجلات الصيانة نهائياً',
                             style: TextStyle(color: Colors.red),
                           ),
                           onTap: () => _confirmDeleteAllData(context),
@@ -199,6 +200,7 @@ class SettingsScreen extends StatelessWidget {
                   const Text('• جميع المنتجات'),
                   const Text('• جميع المبيعات'),
                   const Text('• جميع حركات المخزون'),
+                  const Text('• جميع سجلات الصيانة'),
                   const SizedBox(height: 8),
                   const Text(
                     'هذا الإجراء لا يمكن التراجع عنه!',
@@ -259,10 +261,20 @@ class SettingsScreen extends StatelessWidget {
       await dbHelper.deleteAllData();
 
       // Refresh provider data
-      final provider = Provider.of<ProductProvider>(context, listen: false);
-      await provider.fetchProducts();
-      await provider.fetchSales();
-      await provider.fetchInventoryTransactions();
+      final productProvider = Provider.of<ProductProvider>(
+        context,
+        listen: false,
+      );
+      await productProvider.fetchProducts();
+      await productProvider.fetchSales();
+      await productProvider.fetchInventoryTransactions();
+
+      // Refresh maintenance provider data
+      final maintenanceProvider = Provider.of<MaintenanceProvider>(
+        context,
+        listen: false,
+      );
+      await maintenanceProvider.fetchMaintenanceRecords();
 
       // Close loading dialog
       Navigator.pop(context);

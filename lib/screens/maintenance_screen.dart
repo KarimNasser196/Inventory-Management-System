@@ -1,4 +1,4 @@
-// lib/screens/maintenance_screen.dart
+// lib/screens/maintenance_screen.dart (نسخة مبسطة)
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -23,7 +23,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -43,7 +43,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
           // شريط الإحصائيات
           _buildStatisticsBar(context, isMobile),
 
-          // شريط البحث والأزرار
+          // شريط البحث
           _buildToolbar(context, isMobile),
 
           // التبويبات
@@ -57,7 +57,6 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
               indicatorColor: Colors.white,
               tabs: const [
                 Tab(icon: Icon(Icons.list), text: 'الكل'),
-                Tab(icon: Icon(Icons.search), text: 'قيد الفحص'),
                 Tab(icon: Icon(Icons.build), text: 'قيد الإصلاح'),
                 Tab(icon: Icon(Icons.check_circle), text: 'جاهز للاستلام'),
                 Tab(icon: Icon(Icons.done_all), text: 'تم التسليم'),
@@ -72,7 +71,6 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
               controller: _tabController,
               children: [
                 _buildRecordsList(null, isMobile),
-                _buildRecordsList('قيد الفحص', isMobile),
                 _buildRecordsList('قيد الإصلاح', isMobile),
                 _buildRecordsList('جاهز للاستلام', isMobile),
                 _buildRecordsList('تم التسليم', isMobile),
@@ -184,7 +182,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
                     ),
                     Expanded(
                       child: _buildStatItem(
-                        'إجمالي الإيرادات',
+                        'الإيرادات',
                         '${provider.totalRevenue.toStringAsFixed(2)} جنيه',
                         Icons.attach_money,
                       ),
@@ -252,7 +250,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'بحث (الاسم، الهاتف، نوع الجهاز، الموديل...)',
+                hintText: 'بحث (الاسم، نوع الجهاز...)',
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
@@ -449,14 +447,13 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    _buildInfoRow(Icons.devices, record.deviceType),
+                    const SizedBox(height: 6),
                     _buildInfoRow(
-                      Icons.devices,
-                      '${record.deviceType} - ${record.deviceBrand}',
+                      Icons.description,
+                      record.problemDescription,
+                      maxLines: 2,
                     ),
-                    const SizedBox(height: 6),
-                    _buildInfoRow(Icons.smartphone, record.deviceModel),
-                    const SizedBox(height: 6),
-                    _buildInfoRow(Icons.phone, record.customerPhone),
                   ],
                 ),
               ),
@@ -467,11 +464,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
               Row(
                 children: [
                   Expanded(
-                    child: _buildCostItem(
-                      'التكلفة',
-                      record.actualCost,
-                      Colors.blue,
-                    ),
+                    child: _buildCostItem('التكلفة', record.cost, Colors.blue),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -496,7 +489,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
 
               const SizedBox(height: 12),
 
-              // Date Info
+              // Date
               Text(
                 'استلام: ${DateFormat('yyyy-MM-dd').format(record.receivedDate)}',
                 style: TextStyle(fontSize: 11, color: Colors.grey[600]),
@@ -541,7 +534,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String text) {
+  Widget _buildInfoRow(IconData icon, String text, {int maxLines = 1}) {
     return Row(
       children: [
         Icon(icon, size: 14, color: Colors.grey[600]),
@@ -550,7 +543,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
           child: Text(
             text,
             style: const TextStyle(fontSize: 12),
-            maxLines: 1,
+            maxLines: maxLines,
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -584,8 +577,6 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
 
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'قيد الفحص':
-        return Colors.blue;
       case 'قيد الإصلاح':
         return Colors.orange;
       case 'جاهز للاستلام':
@@ -601,8 +592,6 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
 
   IconData _getStatusIcon(String status) {
     switch (status) {
-      case 'قيد الفحص':
-        return Icons.search;
       case 'قيد الإصلاح':
         return Icons.build;
       case 'جاهز للاستلام':
@@ -640,17 +629,6 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              title: const Text('قيد الفحص'),
-              leading: Radio<String>(
-                value: 'قيد الفحص',
-                groupValue: record.status,
-                onChanged: (value) {
-                  Navigator.pop(context);
-                  _updateStatus(record.id!, value!);
-                },
-              ),
-            ),
             ListTile(
               title: const Text('قيد الإصلاح'),
               leading: Radio<String>(

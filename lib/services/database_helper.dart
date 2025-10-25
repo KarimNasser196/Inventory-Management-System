@@ -28,7 +28,7 @@ class DatabaseHelper {
         return await databaseFactory.openDatabase(
           path,
           options: OpenDatabaseOptions(
-            version: 6, // تم التحديث من 5 إلى 6
+            version: 8, // تحديث إلى النسخة 8
             onCreate: _createDB,
             onUpgrade: _upgradeDB,
           ),
@@ -121,33 +121,23 @@ CREATE TABLE inventory_transactions (
       );
       debugPrint('Created inventory_transactions table');
 
-      // جدول الصيانة (جديد)
+      // جدول الصيانة (مبسط)
       await db.execute('''
 CREATE TABLE maintenance_records (
   id $idType,
   deviceType $textType,
-  deviceBrand $textType,
-  deviceModel $textType,
-  serialNumber $textNullableType,
   customerName $textType,
-  customerPhone $textType,
   problemDescription $textType,
   status $textType,
-  estimatedCost $realType,
-  actualCost $realType,
+  cost $realType,
   paidAmount $realType,
   receivedDate $textType,
-  expectedDeliveryDate $textNullableType,
-  actualDeliveryDate $textNullableType,
-  technicianNotes $textNullableType,
-  usedParts $textNullableType,
-  customerNotes $textNullableType,
-  isWarranty $integerType,
-  warrantyDays $integerType
+  deliveryDate $textNullableType,
+  repairCode $textType
 )
 ''');
       await db.execute(
-        'CREATE INDEX idx_customerPhone ON maintenance_records(customerPhone)',
+        'CREATE INDEX idx_customerName ON maintenance_records(customerName)',
       );
       await db.execute(
         'CREATE INDEX idx_status ON maintenance_records(status)',
@@ -155,7 +145,10 @@ CREATE TABLE maintenance_records (
       await db.execute(
         'CREATE INDEX idx_receivedDate ON maintenance_records(receivedDate)',
       );
-      debugPrint('Created maintenance_records table');
+      await db.execute(
+        'CREATE INDEX idx_repairCode ON maintenance_records(repairCode)',
+      );
+      debugPrint('Created simplified maintenance_records table');
     } catch (e) {
       debugPrint('Error creating tables: $e');
       rethrow;
@@ -171,7 +164,7 @@ CREATE TABLE maintenance_records (
       final dbPath = join(documentsDirectory.path, 'inventory_management.db');
       final backupPath = join(
         documentsDirectory.path,
-        'inventory_management_backup_${DateTime.now().toIso8601String()}.db',
+        'inventory_management_backup_${DateTime.now().millisecondsSinceEpoch}.db',
       );
       await File(dbPath).copy(backupPath);
       debugPrint('Backed up database to $backupPath');
@@ -278,7 +271,7 @@ FROM products_old
       }
     }
 
-    // الترقية الجديدة: إضافة جدول الصيانة
+    // إضافة جدول الصيانة (نسخة معقدة)
     if (oldVersion < 6) {
       try {
         await db.execute('''
@@ -314,9 +307,188 @@ CREATE TABLE maintenance_records (
         await db.execute(
           'CREATE INDEX idx_receivedDate ON maintenance_records(receivedDate)',
         );
-        debugPrint('Created maintenance_records table');
+        debugPrint('Created maintenance_records table (old version)');
       } catch (e) {
         debugPrint('Error creating maintenance_records table: $e');
+      }
+    }
+
+    // تبسيط جدول الصيانة
+    if (oldVersion < 7) {
+      try {
+        // التحقق من وجود الجدول القديم
+        final tables = await db.rawQuery(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='maintenance_records'",
+        );
+
+        if (tables.isNotEmpty) {
+          // إنشاء جدول مؤقت بالهيكل الجديد المبسط
+          await db.execute('''
+CREATE TABLE maintenance_records_new (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  deviceType TEXT NOT NULL,
+  customerName TEXT NOT NULL,
+  problemDescription TEXT NOT NULL,
+  status TEXT NOT NULL,
+  cost REAL NOT NULL,
+  paidAmount REAL NOT NULL,
+  receivedDate TEXT NOT NULL,
+  deliveryDate TEXT,
+  repairCode TEXT NOT NULL
+)
+''');
+
+          // نقل البيانات القديمة إلى الجدول الجديد
+          await db.execute('''
+INSERT INTO maintenance_records_new 
+  (id, deviceType, customerName, problemDescription, status, cost, paidAmount, receivedDate, deliveryDate, repairCode)
+SELECT 
+  id, 
+  deviceType, 
+  customerName, 
+  problemDescription, 
+  CASE 
+    WHEN status = 'قيد الفحص' THEN 'قيد الإصلاح'
+    ELSE status
+  END,
+  actualCost, 
+  paidAmount, 
+  receivedDate,
+  actualDeliveryDate,
+  printf('%06d', abs(random() % 900000 + 100000))
+FROM maintenance_records
+''');
+
+          // حذف الجدول القديم
+          await db.execute('DROP TABLE maintenance_records');
+
+          // إعادة تسمية الجدول الجديد
+          await db.execute(
+            'ALTER TABLE maintenance_records_new RENAME TO maintenance_records',
+          );
+
+          // إنشاء الفهارس
+          await db.execute(
+            'CREATE INDEX idx_customerName ON maintenance_records(customerName)',
+          );
+          await db.execute(
+            'CREATE INDEX idx_status ON maintenance_records(status)',
+          );
+          await db.execute(
+            'CREATE INDEX idx_receivedDate ON maintenance_records(receivedDate)',
+          );
+          await db.execute(
+            'CREATE INDEX idx_repairCode ON maintenance_records(repairCode)',
+          );
+
+          debugPrint('Successfully simplified maintenance_records table');
+        } else {
+          // إذا لم يكن الجدول موجوداً، أنشئ الجدول المبسط مباشرة
+          await db.execute('''
+CREATE TABLE maintenance_records (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  deviceType TEXT NOT NULL,
+  customerName TEXT NOT NULL,
+  problemDescription TEXT NOT NULL,
+  status TEXT NOT NULL,
+  cost REAL NOT NULL,
+  paidAmount REAL NOT NULL,
+  receivedDate TEXT NOT NULL,
+  deliveryDate TEXT,
+  repairCode TEXT NOT NULL
+)
+''');
+          await db.execute(
+            'CREATE INDEX idx_customerName ON maintenance_records(customerName)',
+          );
+          await db.execute(
+            'CREATE INDEX idx_status ON maintenance_records(status)',
+          );
+          await db.execute(
+            'CREATE INDEX idx_receivedDate ON maintenance_records(receivedDate)',
+          );
+          await db.execute(
+            'CREATE INDEX idx_repairCode ON maintenance_records(repairCode)',
+          );
+          debugPrint('Created new simplified maintenance_records table');
+        }
+      } catch (e) {
+        debugPrint('Error simplifying maintenance_records table: $e');
+        // في حالة الفشل، حاول إنشاء جدول جديد
+        try {
+          await db.execute('DROP TABLE IF EXISTS maintenance_records');
+          await db.execute('''
+CREATE TABLE maintenance_records (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  deviceType TEXT NOT NULL,
+  customerName TEXT NOT NULL,
+  problemDescription TEXT NOT NULL,
+  status TEXT NOT NULL,
+  cost REAL NOT NULL,
+  paidAmount REAL NOT NULL,
+  receivedDate TEXT NOT NULL,
+  deliveryDate TEXT,
+  repairCode TEXT NOT NULL
+)
+''');
+          await db.execute(
+            'CREATE INDEX idx_customerName ON maintenance_records(customerName)',
+          );
+          await db.execute(
+            'CREATE INDEX idx_status ON maintenance_records(status)',
+          );
+          await db.execute(
+            'CREATE INDEX idx_receivedDate ON maintenance_records(receivedDate)',
+          );
+          await db.execute(
+            'CREATE INDEX idx_repairCode ON maintenance_records(repairCode)',
+          );
+          debugPrint(
+            'Created fresh simplified maintenance_records table after error',
+          );
+        } catch (e2) {
+          debugPrint('Fatal error creating maintenance_records table: $e2');
+        }
+      }
+    }
+
+    // إضافة حقول deliveryDate و repairCode للجداول الموجودة
+    if (oldVersion < 8) {
+      try {
+        // التحقق من وجود الأعمدة
+        final tableInfo = await db.rawQuery(
+          'PRAGMA table_info(maintenance_records)',
+        );
+        final columnNames = tableInfo
+            .map((col) => col['name'] as String)
+            .toList();
+
+        if (!columnNames.contains('deliveryDate')) {
+          await db.execute(
+            'ALTER TABLE maintenance_records ADD COLUMN deliveryDate TEXT',
+          );
+          debugPrint('Added deliveryDate column');
+        }
+
+        if (!columnNames.contains('repairCode')) {
+          await db.execute(
+            'ALTER TABLE maintenance_records ADD COLUMN repairCode TEXT NOT NULL DEFAULT "000000"',
+          );
+
+          // تحديث السجلات الموجودة بأكواد عشوائية
+          await db.execute('''
+            UPDATE maintenance_records 
+            SET repairCode = printf('%06d', abs(random() % 900000 + 100000))
+            WHERE repairCode = "000000"
+          ''');
+
+          await db.execute(
+            'CREATE INDEX idx_repairCode ON maintenance_records(repairCode)',
+          );
+          debugPrint('Added repairCode column and generated codes');
+        }
+      } catch (e) {
+        debugPrint('Error adding deliveryDate/repairCode columns: $e');
       }
     }
   }
@@ -499,7 +671,7 @@ CREATE TABLE maintenance_records (
     }
   }
 
-  // ========== دوال الصيانة (جديدة) ==========
+  // ========== دوال الصيانة (مبسطة) ==========
 
   Future<List<Map<String, dynamic>>> getMaintenanceRecords() async {
     final db = await database;
@@ -586,26 +758,40 @@ CREATE TABLE maintenance_records (
     }
   }
 
+  Future<Map<String, dynamic>?> getMaintenanceRecordByCode(
+    String repairCode,
+  ) async {
+    final db = await database;
+    try {
+      final records = await db.query(
+        'maintenance_records',
+        where: 'repairCode = ?',
+        whereArgs: [repairCode],
+        limit: 1,
+      );
+      if (records.isNotEmpty) {
+        return records.first;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error fetching maintenance record by code: $e');
+      return null;
+    }
+  }
+
   Future<Map<String, dynamic>> getMaintenanceStatistics() async {
     final db = await database;
     try {
       final records = await db.query('maintenance_records');
 
       int total = records.length;
-      int pending = records
-          .where(
-            (r) => r['status'] == 'قيد الفحص' || r['status'] == 'قيد الإصلاح',
-          )
-          .length;
+      int pending = records.where((r) => r['status'] == 'قيد الإصلاح').length;
       int ready = records.where((r) => r['status'] == 'جاهز للاستلام').length;
       int completed = records.where((r) => r['status'] == 'تم التسليم').length;
 
       double totalRevenue = records
           .where((r) => r['status'] == 'تم التسليم')
-          .fold<double>(
-            0,
-            (sum, r) => sum + (r['actualCost'] as num).toDouble(),
-          );
+          .fold<double>(0, (sum, r) => sum + (r['cost'] as num).toDouble());
 
       double totalPaid = records.fold<double>(
         0,
@@ -642,7 +828,7 @@ CREATE TABLE maintenance_records (
         await txn.delete('sales');
         await txn.delete('inventory_transactions');
         await txn.delete('products');
-        await txn.delete('maintenance_records'); // تم الإضافة
+        await txn.delete('maintenance_records');
         debugPrint('Deleted all data from database');
       });
     } catch (e) {
