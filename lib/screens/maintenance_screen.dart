@@ -1,6 +1,7 @@
-// lib/screens/maintenance_screen.dart (نسخة مبسطة)
+// lib/screens/maintenance_screen.dart (نسخة محدثة مع كود الصيانة)
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/maintenance_provider.dart';
@@ -40,13 +41,8 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
     return Scaffold(
       body: Column(
         children: [
-          // شريط الإحصائيات
           _buildStatisticsBar(context, isMobile),
-
-          // شريط البحث
           _buildToolbar(context, isMobile),
-
-          // التبويبات
           Container(
             color: Colors.blue,
             child: TabBar(
@@ -64,8 +60,6 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
               ],
             ),
           ),
-
-          // المحتوى
           Expanded(
             child: TabBarView(
               controller: _tabController,
@@ -250,7 +244,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'بحث (الاسم، نوع الجهاز...)',
+                hintText: 'بحث (الاسم، نوع الجهاز، كود الصيانة...)',
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
@@ -372,7 +366,6 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
               Row(
                 children: [
                   Container(
@@ -414,8 +407,6 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
                 ],
               ),
               const SizedBox(height: 12),
-
-              // Status Badge
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -434,10 +425,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
                   ),
                 ),
               ),
-
               const SizedBox(height: 12),
-
-              // Device Info
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -447,6 +435,54 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    InkWell(
+                      onTap: () {
+                        Clipboard.setData(
+                          ClipboardData(text: record.repairCode),
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('تم نسخ الكود: ${record.repairCode}'),
+                            duration: const Duration(seconds: 2),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.blue[100],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue[300]!),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.qr_code,
+                              size: 20,
+                              color: Colors.blue[900],
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'كود: ${record.repairCode}',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue[900],
+                                fontFamily: 'monospace',
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(Icons.copy, size: 16, color: Colors.blue[700]),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     _buildInfoRow(Icons.devices, record.deviceType),
                     const SizedBox(height: 6),
                     _buildInfoRow(
@@ -457,10 +493,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
                   ],
                 ),
               ),
-
               const SizedBox(height: 12),
-
-              // Cost Info
               Row(
                 children: [
                   Expanded(
@@ -486,18 +519,35 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
                   ],
                 ],
               ),
-
               const SizedBox(height: 12),
-
-              // Date
-              Text(
-                'استلام: ${DateFormat('yyyy-MM-dd').format(record.receivedDate)}',
-                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      'استلام: ${DateFormat('yyyy-MM-dd').format(record.receivedDate)}',
+                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (record.deliveryDate != null) ...[
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'تسليم: ${DateFormat('yyyy-MM-dd HH:mm').format(record.deliveryDate!)}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.green[700],
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.end,
+                      ),
+                    ),
+                  ],
+                ],
               ),
-
               const Spacer(),
-
-              // Action Buttons
               Row(
                 children: [
                   Expanded(

@@ -1,11 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:intl/intl.dart';
+import 'dart:io';
 import '../services/database_helper.dart';
+import '../services/backup_service.dart';
 import '../providers/product_provider.dart';
 import '../providers/maintenance_provider.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _isBackingUp = false;
+  bool _isRestoring = false;
 
   @override
   Widget build(BuildContext context) {
@@ -22,6 +34,7 @@ class SettingsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // قسم النسخ الاحتياطي
                 Card(
                   elevation: 4,
                   child: Padding(
@@ -29,28 +42,47 @@ class SettingsScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'النسخ الاحتياطي',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.blue[50],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.backup,
+                                color: Colors.blue[700],
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'النسخ الاحتياطي',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 16),
                         ListTile(
-                          leading: const Icon(Icons.backup, color: Colors.blue),
+                          leading: const Icon(Icons.save, color: Colors.blue),
                           title: const Text('إنشاء نسخة احتياطية'),
                           subtitle: const Text(
                             'حفظ جميع البيانات في ملف خارجي',
                           ),
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('تم إنشاء نسخة احتياطية بنجاح'),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                          },
+                          trailing: _isBackingUp
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : null,
+                          onTap: _isBackingUp ? null : _createBackup,
                         ),
                         const Divider(),
                         ListTile(
@@ -60,20 +92,78 @@ class SettingsScreen extends StatelessWidget {
                           ),
                           title: const Text('استعادة من نسخة احتياطية'),
                           subtitle: const Text('استعادة البيانات من ملف خارجي'),
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('تم استعادة البيانات بنجاح'),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                          },
+                          trailing: _isRestoring
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : null,
+                          onTap: _isRestoring ? null : _restoreBackup,
                         ),
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
+
+                // معلومات النسخة الاحتياطية
+                Card(
+                  elevation: 4,
+                  color: Colors.blue[50],
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.info_outline, color: Colors.blue[700]),
+                            const SizedBox(width: 8),
+                            Text(
+                              'معلومات مهمة',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue[700],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          '• يتم حفظ النسخة الاحتياطية بتنسيق SQLite',
+                          style: TextStyle(fontSize: 14),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          '• تحتوي النسخة على جميع المنتجات والمبيعات والصيانة',
+                          style: TextStyle(fontSize: 14),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          '• يُنصح بإنشاء نسخ احتياطية دورية',
+                          style: TextStyle(fontSize: 14),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          '• عند الاستعادة، سيتم استبدال البيانات الحالية',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // منطقة خطرة
                 Card(
                   elevation: 4,
                   color: Colors.red[50],
@@ -121,6 +211,8 @@ class SettingsScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
+
+                // حول التطبيق
                 Card(
                   elevation: 4,
                   child: Padding(
@@ -128,17 +220,34 @@ class SettingsScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'حول التطبيق',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.purple[50],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.info,
+                                color: Colors.purple[700],
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'حول التطبيق',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 16),
                         const ListTile(
-                          leading: Icon(Icons.info_outline, color: Colors.blue),
-                          title: Text('إدارة مخزون أجهزة اللابتوب'),
+                          leading: Icon(Icons.computer, color: Colors.blue),
+                          title: Text('نظام إدارة المخزون والصيانة'),
                           subtitle: Text('الإصدار 1.0.0'),
                         ),
                         const Divider(),
@@ -157,6 +266,164 @@ class SettingsScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _createBackup() async {
+    setState(() => _isBackingUp = true);
+
+    try {
+      // اختيار مكان الحفظ
+      String? outputPath = await FilePicker.platform.saveFile(
+        dialogTitle: 'حفظ النسخة الاحتياطية',
+        fileName:
+            'backup_${DateFormat('yyyy-MM-dd_HH-mm-ss').format(DateTime.now())}.db',
+        type: FileType.custom,
+        allowedExtensions: ['db'],
+      );
+
+      if (outputPath == null) {
+        // المستخدم ألغى العملية
+        setState(() => _isBackingUp = false);
+        return;
+      }
+
+      // إنشاء النسخة الاحتياطية
+      final backupService = BackupService();
+      await backupService.createBackup(outputPath);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('تم إنشاء النسخة الاحتياطية بنجاح\n$outputPath'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطأ في إنشاء النسخة الاحتياطية: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isBackingUp = false);
+      }
+    }
+  }
+
+  Future<void> _restoreBackup() async {
+    // تأكيد الاستعادة
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.warning, color: Colors.orange[700]),
+            const SizedBox(width: 8),
+            const Text('تأكيد الاستعادة'),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'سيتم استبدال جميع البيانات الحالية بالبيانات من النسخة الاحتياطية.',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 12),
+            Text('هل تريد المتابعة؟', style: TextStyle(fontSize: 14)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+            child: const Text('استعادة'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isRestoring = true);
+
+    try {
+      // اختيار ملف النسخة الاحتياطية
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        dialogTitle: 'اختر ملف النسخة الاحتياطية',
+        type: FileType.custom,
+        allowedExtensions: ['db'],
+      );
+
+      if (result == null || result.files.single.path == null) {
+        // المستخدم ألغى العملية
+        setState(() => _isRestoring = false);
+        return;
+      }
+
+      String backupPath = result.files.single.path!;
+
+      // التحقق من صحة الملف
+      final backupFile = File(backupPath);
+      if (!await backupFile.exists()) {
+        throw Exception('الملف غير موجود');
+      }
+
+      // استعادة النسخة الاحتياطية
+      final backupService = BackupService();
+      await backupService.restoreBackup(backupPath);
+
+      // تحديث البيانات في المزودات
+      if (mounted) {
+        final productProvider = Provider.of<ProductProvider>(
+          context,
+          listen: false,
+        );
+        await productProvider.fetchProducts();
+        await productProvider.fetchSales();
+        await productProvider.fetchInventoryTransactions();
+
+        final maintenanceProvider = Provider.of<MaintenanceProvider>(
+          context,
+          listen: false,
+        );
+        await maintenanceProvider.fetchMaintenanceRecords();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم استعادة النسخة الاحتياطية بنجاح'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطأ في استعادة النسخة الاحتياطية: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isRestoring = false);
+      }
+    }
   }
 
   void _confirmDeleteAllData(BuildContext context) {
@@ -241,7 +508,6 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Future<void> _deleteAllData(BuildContext context) async {
-    // Show loading dialog
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -260,7 +526,6 @@ class SettingsScreen extends StatelessWidget {
       final dbHelper = DatabaseHelper.instance;
       await dbHelper.deleteAllData();
 
-      // Refresh provider data
       final productProvider = Provider.of<ProductProvider>(
         context,
         listen: false,
@@ -269,17 +534,14 @@ class SettingsScreen extends StatelessWidget {
       await productProvider.fetchSales();
       await productProvider.fetchInventoryTransactions();
 
-      // Refresh maintenance provider data
       final maintenanceProvider = Provider.of<MaintenanceProvider>(
         context,
         listen: false,
       );
       await maintenanceProvider.fetchMaintenanceRecords();
 
-      // Close loading dialog
       Navigator.pop(context);
 
-      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('تم حذف جميع البيانات بنجاح'),
@@ -288,10 +550,8 @@ class SettingsScreen extends StatelessWidget {
         ),
       );
     } catch (e) {
-      // Close loading dialog
       Navigator.pop(context);
 
-      // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('خطأ في حذف البيانات: $e'),
