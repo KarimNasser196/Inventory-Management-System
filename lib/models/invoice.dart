@@ -1,4 +1,4 @@
-// lib/models/invoice.dart
+// lib/models/invoice.dart (UPDATED)
 
 class Invoice {
   final int? id;

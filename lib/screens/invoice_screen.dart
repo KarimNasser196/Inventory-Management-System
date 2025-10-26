@@ -1,4 +1,4 @@
-// lib/screens/invoice_screen.dart
+// lib/screens/invoice_screen.dart (ENHANCED)
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -45,7 +45,7 @@ class InvoiceScreen extends StatelessWidget {
             ),
             child: Column(
               children: [
-                // Header
+                // Header - شركة رياض سوفت
                 Container(
                   padding: const EdgeInsets.all(32),
                   decoration: BoxDecoration(
@@ -59,49 +59,24 @@ class InvoiceScreen extends StatelessWidget {
                   ),
                   child: Column(
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'نظام إدارة المخزون',
-                                style: TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'فاتورة مبيعات',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  color: Colors.white.withOpacity(0.9),
-                                ),
-                              ),
-                            ],
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              'INVOICE',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue[700],
-                              ),
-                            ),
-                          ),
-                        ],
+                      const Text(
+                        'شركة رياض سوفت',
+                        style: TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'فاتورة مبيعات',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
@@ -146,7 +121,8 @@ class InvoiceScreen extends StatelessWidget {
                                   invoice.customerName,
                                   Icons.person,
                                 ),
-                                if (invoice.notes != null) ...[
+                                if (invoice.notes != null &&
+                                    invoice.notes!.isNotEmpty) ...[
                                   const SizedBox(height: 12),
                                   _buildInfoRow(
                                     'ملاحظات:',
@@ -189,6 +165,7 @@ class InvoiceScreen extends StatelessWidget {
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
+                                        fontSize: 14,
                                       ),
                                       textAlign: TextAlign.center,
                                     ),
@@ -200,6 +177,7 @@ class InvoiceScreen extends StatelessWidget {
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
+                                        fontSize: 14,
                                       ),
                                     ),
                                   ),
@@ -210,6 +188,7 @@ class InvoiceScreen extends StatelessWidget {
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
+                                        fontSize: 14,
                                       ),
                                       textAlign: TextAlign.center,
                                     ),
@@ -221,6 +200,7 @@ class InvoiceScreen extends StatelessWidget {
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
+                                        fontSize: 14,
                                       ),
                                       textAlign: TextAlign.center,
                                     ),
@@ -232,6 +212,7 @@ class InvoiceScreen extends StatelessWidget {
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
+                                        fontSize: 14,
                                       ),
                                       textAlign: TextAlign.center,
                                     ),
@@ -260,7 +241,8 @@ class InvoiceScreen extends StatelessWidget {
                                         '${index + 1}',
                                         textAlign: TextAlign.center,
                                         style: const TextStyle(
-                                          fontWeight: FontWeight.w500,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
                                         ),
                                       ),
                                     ),
@@ -268,7 +250,10 @@ class InvoiceScreen extends StatelessWidget {
                                       flex: 4,
                                       child: Text(
                                         item.productName,
-                                        style: const TextStyle(fontSize: 15),
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w500,
+                                        ),
                                       ),
                                     ),
                                     Expanded(
@@ -278,6 +263,7 @@ class InvoiceScreen extends StatelessWidget {
                                         textAlign: TextAlign.center,
                                         style: const TextStyle(
                                           fontWeight: FontWeight.bold,
+                                          fontSize: 14,
                                         ),
                                       ),
                                     ),
@@ -286,6 +272,10 @@ class InvoiceScreen extends StatelessWidget {
                                       child: Text(
                                         '${item.unitPrice.toStringAsFixed(2)} ج',
                                         textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 14,
+                                        ),
                                       ),
                                     ),
                                     Expanded(
@@ -296,6 +286,7 @@ class InvoiceScreen extends StatelessWidget {
                                         style: const TextStyle(
                                           fontWeight: FontWeight.bold,
                                           color: Colors.green,
+                                          fontSize: 14,
                                         ),
                                       ),
                                     ),
@@ -324,31 +315,80 @@ class InvoiceScreen extends StatelessWidget {
                               invoice.subtotal,
                               false,
                             ),
-                            if (invoice.tax > 0) ...[
-                              const SizedBox(height: 12),
-                              _buildTotalRow('الضريبة:', invoice.tax, false),
-                            ],
                             if (invoice.discount > 0) ...[
                               const SizedBox(height: 12),
                               _buildTotalRow(
                                 'الخصم:',
                                 invoice.discount,
                                 false,
+                                isDiscount: true,
                               ),
+                            ],
+                            if (invoice.tax > 0) ...[
+                              const SizedBox(height: 12),
+                              _buildTotalRow('الضريبة:', invoice.tax, false),
                             ],
                             const SizedBox(height: 16),
                             const Divider(thickness: 2),
                             const SizedBox(height: 16),
                             _buildTotalRow(
                               'الإجمالي النهائي:',
-                              invoice.total,
+                              invoice.finalTotal,
                               true,
                             ),
                           ],
                         ),
                       ),
 
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 40),
+
+                      // Signature Section
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'توقيع البائع',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 40),
+                                Container(
+                                  width: 150,
+                                  height: 2,
+                                  color: Colors.grey[400],
+                                ),
+                              ],
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'توقيع العميل',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 40),
+                                Container(
+                                  width: 150,
+                                  height: 2,
+                                  color: Colors.grey[400],
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
 
                       // Footer
                       Container(
@@ -371,10 +411,11 @@ class InvoiceScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'للاستفسارات: اتصل بنا',
+                              'للاستفسارات: اتصل بنا | شركة رياض سوفت',
                               style: TextStyle(
                                 fontSize: 14,
-                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey[700],
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -411,31 +452,45 @@ class InvoiceScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 14),
+        Flexible(
+          child: Text(
+            value,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildTotalRow(String label, double amount, bool isFinal) {
+  Widget _buildTotalRow(
+    String label,
+    double amount,
+    bool isFinal, {
+    bool isDiscount = false,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           label,
           style: TextStyle(
-            fontSize: isFinal ? 18 : 16,
-            fontWeight: isFinal ? FontWeight.bold : FontWeight.w500,
+            fontSize: isFinal ? 20 : 16,
+            fontWeight: FontWeight.bold,
           ),
         ),
         Text(
           '${amount.toStringAsFixed(2)} جنيه',
           style: TextStyle(
-            fontSize: isFinal ? 22 : 16,
+            fontSize: isFinal ? 24 : 16,
             fontWeight: FontWeight.bold,
-            color: isFinal ? Colors.blue[700] : Colors.black87,
+            color: isFinal
+                ? Colors.blue[700]
+                : isDiscount
+                    ? Colors.red[700]
+                    : Colors.black87,
           ),
         ),
       ],
