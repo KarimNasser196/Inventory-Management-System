@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:soundtry/models/invoice.dart';
+import 'package:soundtry/screens/invoice_screen.dart';
 import '../providers/product_provider.dart';
 import '../models/product.dart';
 
@@ -60,9 +62,8 @@ class _SellProductScreenState extends State<SellProductScreen>
 
     // Filter by category
     if (_selectedCategoryFilter != null) {
-      filtered = filtered
-          .where((p) => p.category == _selectedCategoryFilter)
-          .toList();
+      filtered =
+          filtered.where((p) => p.category == _selectedCategoryFilter).toList();
     }
 
     return filtered;
@@ -124,7 +125,9 @@ class _SellProductScreenState extends State<SellProductScreen>
                       children: [
                         Text(
                           'تسجيل بيع جديد',
-                          style: Theme.of(context).textTheme.headlineSmall
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 16),
@@ -235,8 +238,8 @@ class _SellProductScreenState extends State<SellProductScreen>
                                 },
                                 validator: (value) =>
                                     value == null || value.isEmpty
-                                    ? 'مطلوب'
-                                    : null,
+                                        ? 'مطلوب'
+                                        : null,
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -314,8 +317,8 @@ class _SellProductScreenState extends State<SellProductScreen>
                                   setState(() {
                                     _selectedProduct = product;
                                     _searchController.text = product.name;
-                                    _priceController.text = product.retailPrice
-                                        .toStringAsFixed(2);
+                                    _priceController.text =
+                                        product.retailPrice.toStringAsFixed(2);
                                     _customPrice = product.retailPrice;
                                   });
                                 },
@@ -460,6 +463,7 @@ class _SellProductScreenState extends State<SellProductScreen>
                   DataColumn(label: Text('الربح')),
                   DataColumn(label: Text('التاريخ')),
                   DataColumn(label: Text('إجراءات')),
+                  DataColumn(label: Text('فاتورة')),
                 ],
                 rows: provider.sales.map((sale) {
                   final profit =
@@ -507,6 +511,25 @@ class _SellProductScreenState extends State<SellProductScreen>
                           icon: const Icon(Icons.reply, color: Colors.orange),
                           tooltip: 'استرجاع',
                           onPressed: () => _showReturnDialog(sale),
+                        ),
+                      ),
+                      DataCell(
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon:
+                                  const Icon(Icons.receipt, color: Colors.blue),
+                              tooltip: 'عرض الفاتورة',
+                              onPressed: () => _showInvoiceForSale(sale),
+                            ),
+                            IconButton(
+                              icon:
+                                  const Icon(Icons.reply, color: Colors.orange),
+                              tooltip: 'استرجاع',
+                              onPressed: () => _showReturnDialog(sale),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -686,6 +709,25 @@ class _SellProductScreenState extends State<SellProductScreen>
         _notes,
       );
 
+      // إنشاء الفاتورة
+      final invoiceItems = [
+        InvoiceItem(
+          productName: _selectedProduct!.name,
+          quantity: _quantity,
+          unitPrice: _customPrice!,
+        ),
+      ];
+
+      final invoice = Invoice(
+        invoiceNumber: Invoice.generateInvoiceNumber(),
+        invoiceDate: DateTime.now(),
+        customerName: _customerName,
+        items: invoiceItems,
+        tax: 0, // يمكن إضافة حقل للضريبة في النموذج
+        discount: 0, // يمكن إضافة حقل للخصم في النموذج
+        notes: _notes,
+      );
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('تم تسجيل البيع بنجاح'),
@@ -693,6 +735,45 @@ class _SellProductScreenState extends State<SellProductScreen>
         ),
       );
 
+      // إظهار حوار لسؤال المستخدم إذا كان يريد طباعة الفاتورة
+      final shouldPrintInvoice = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green[700]),
+              const SizedBox(width: 8),
+              const Text('تم البيع بنجاح'),
+            ],
+          ),
+          content: const Text('هل تريد عرض وطباعة الفاتورة؟'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('لا'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => Navigator.pop(context, true),
+              icon: const Icon(Icons.receipt),
+              label: const Text('عرض الفاتورة'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+              ),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldPrintInvoice == true) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => InvoiceScreen(invoice: invoice),
+          ),
+        );
+      }
+
+      // إعادة تعيين النموذج
       _formKey.currentState!.reset();
       setState(() {
         _selectedProduct = null;
@@ -712,5 +793,32 @@ class _SellProductScreenState extends State<SellProductScreen>
       );
       setState(() => _isSelling = false);
     }
+  }
+
+  void _showInvoiceForSale(sale) {
+    final invoiceItems = [
+      InvoiceItem(
+        productName: sale.productName,
+        quantity: sale.quantitySold,
+        unitPrice: sale.unitPrice,
+      ),
+    ];
+
+    final invoice = Invoice(
+      invoiceNumber: 'INV-${sale.id}',
+      invoiceDate: sale.saleDateTime,
+      customerName: sale.customerName,
+      items: invoiceItems,
+      tax: 0,
+      discount: 0,
+      notes: sale.notes,
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => InvoiceScreen(invoice: invoice),
+      ),
+    );
   }
 }

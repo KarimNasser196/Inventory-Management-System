@@ -1,3 +1,5 @@
+// lib/screens/setting_screen.dart (UPDATED)
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
@@ -7,6 +9,7 @@ import '../services/database_helper.dart';
 import '../services/backup_service.dart';
 import '../providers/product_provider.dart';
 import '../providers/maintenance_provider.dart';
+import 'change_password_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -34,6 +37,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // قسم الأمان
+                Card(
+                  elevation: 4,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.orange[50],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.security,
+                                color: Colors.orange[700],
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'الأمان وكلمة السر',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        ListTile(
+                          leading: const Icon(
+                            Icons.lock_reset,
+                            color: Colors.orange,
+                          ),
+                          title: const Text('تغيير كلمة السر'),
+                          subtitle: const Text('تحديث كلمة السر الخاصة بك'),
+                          trailing:
+                              const Icon(Icons.arrow_forward_ios, size: 16),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const ChangePasswordScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
                 // قسم النسخ الاحتياطي
                 Card(
                   elevation: 4,
@@ -248,7 +309,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const ListTile(
                           leading: Icon(Icons.computer, color: Colors.blue),
                           title: Text('نظام إدارة المخزون والصيانة'),
-                          subtitle: Text('الإصدار 1.0.0'),
+                          subtitle: Text('الإصدار 2.0.0'),
                         ),
                         const Divider(),
                         const ListTile(
@@ -272,7 +333,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _isBackingUp = true);
 
     try {
-      // اختيار مكان الحفظ
       String? outputPath = await FilePicker.platform.saveFile(
         dialogTitle: 'حفظ النسخة الاحتياطية',
         fileName:
@@ -282,12 +342,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
 
       if (outputPath == null) {
-        // المستخدم ألغى العملية
         setState(() => _isBackingUp = false);
         return;
       }
 
-      // إنشاء النسخة الاحتياطية
       final backupService = BackupService();
       await backupService.createBackup(outputPath);
 
@@ -318,7 +376,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _restoreBackup() async {
-    // تأكيد الاستعادة
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -360,7 +417,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _isRestoring = true);
 
     try {
-      // اختيار ملف النسخة الاحتياطية
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         dialogTitle: 'اختر ملف النسخة الاحتياطية',
         type: FileType.custom,
@@ -368,24 +424,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
 
       if (result == null || result.files.single.path == null) {
-        // المستخدم ألغى العملية
         setState(() => _isRestoring = false);
         return;
       }
 
       String backupPath = result.files.single.path!;
-
-      // التحقق من صحة الملف
       final backupFile = File(backupPath);
       if (!await backupFile.exists()) {
         throw Exception('الملف غير موجود');
       }
 
-      // استعادة النسخة الاحتياطية
       final backupService = BackupService();
       await backupService.restoreBackup(backupPath);
 
-      // تحديث البيانات في المزودات
       if (mounted) {
         final productProvider = Provider.of<ProductProvider>(
           context,
