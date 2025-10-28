@@ -1,4 +1,4 @@
-// lib/models/invoice.dart (UPDATED)
+// lib/models/invoice.dart (UPDATED - With Discount & Purchase Price)
 
 class Invoice {
   final int? id;
@@ -21,13 +21,21 @@ class Invoice {
     this.tax = 0,
     this.discount = 0,
     this.notes,
-  })  : subtotal = items.fold<double>(0.0, (sum, item) => sum + item.total),
-        total = items.fold<double>(0.0, (sum, item) => sum + item.total) +
-            tax -
-            discount;
+  })  : subtotal = items.fold<double>(0.0, (sum, item) => sum + item.subtotal),
+        total = items.fold<double>(0.0, (sum, item) => sum + item.total) + tax;
 
-  // حساب الإجمالي مع الضريبة والخصم
-  double get finalTotal => subtotal + tax - discount;
+  // حساب الإجمالي مع الضريبة
+  double get finalTotal => subtotal - discount + tax;
+
+  // حساب إجمالي الربح
+  double get totalProfit => items.fold<double>(
+      0.0,
+      (sum, item) =>
+          sum +
+          ((item.unitPrice -
+                  item.discount / item.quantity -
+                  item.purchasePrice) *
+              item.quantity));
 
   // توليد رقم فاتورة فريد
   static String generateInvoiceNumber() {
@@ -40,11 +48,20 @@ class InvoiceItem {
   final String productName;
   final int quantity;
   final double unitPrice;
+  final double discount; // خصم المنتج
+  final double purchasePrice; // سعر الشراء للحساب الربح
+  final double subtotal;
   final double total;
 
   InvoiceItem({
     required this.productName,
     required this.quantity,
     required this.unitPrice,
-  }) : total = quantity * unitPrice;
+    this.discount = 0,
+    this.purchasePrice = 0,
+  })  : subtotal = quantity * unitPrice,
+        total = (quantity * unitPrice) - discount;
+
+  double get profit =>
+      ((unitPrice - discount / quantity) - purchasePrice) * quantity;
 }

@@ -1,4 +1,4 @@
-// lib/screens/invoice_screen.dart (FIXED LAYOUT)
+// lib/screens/invoice_screen.dart (UPDATED - Enhanced for B&W Printing)
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -31,9 +31,7 @@ class InvoiceScreen extends StatelessWidget {
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: constraints.maxHeight,
-              ),
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
               child: Center(
                 child: Container(
                   constraints: const BoxConstraints(maxWidth: 800),
@@ -52,7 +50,7 @@ class InvoiceScreen extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Header - شركة رياض سوفت
+                      // Header
                       Container(
                         padding: const EdgeInsets.all(32),
                         decoration: BoxDecoration(
@@ -64,37 +62,81 @@ class InvoiceScreen extends StatelessWidget {
                             topRight: Radius.circular(12),
                           ),
                         ),
-                        child: Column(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              'شركة رياض سوفت',
-                              style: TextStyle(
-                                fontSize: 36,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                              textAlign: TextAlign.center,
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Riad Soft Company',
+                                  style: TextStyle(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  '01019187734',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    'فاتورة مبيعات',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue[700],
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 12),
-                            const Text(
-                              'فاتورة مبيعات',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                              textAlign: TextAlign.center,
+                            Column(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(Icons.qr_code,
+                                      size: 60, color: Colors.blue[700]),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  invoice.invoiceNumber,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
                       ),
 
-                      // Invoice Info
+                      // Content
                       Container(
                         padding: const EdgeInsets.all(32),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            // Invoice Info
                             Container(
                               padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
@@ -190,7 +232,7 @@ class InvoiceScreen extends StatelessWidget {
                                           ),
                                         ),
                                         Expanded(
-                                          flex: 4,
+                                          flex: 3,
                                           child: Text(
                                             'المنتج',
                                             style: TextStyle(
@@ -201,7 +243,7 @@ class InvoiceScreen extends StatelessWidget {
                                           ),
                                         ),
                                         Expanded(
-                                          flex: 2,
+                                          flex: 1,
                                           child: Text(
                                             'الكمية',
                                             style: TextStyle(
@@ -213,9 +255,9 @@ class InvoiceScreen extends StatelessWidget {
                                           ),
                                         ),
                                         Expanded(
-                                          flex: 2,
+                                          flex: 1,
                                           child: Text(
-                                            'سعر الوحدة',
+                                            'السعر',
                                             style: TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.bold,
@@ -225,9 +267,33 @@ class InvoiceScreen extends StatelessWidget {
                                           ),
                                         ),
                                         Expanded(
-                                          flex: 2,
+                                          flex: 1,
+                                          child: Text(
+                                            'خصم',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                        Expanded(
+                                          flex: 1,
                                           child: Text(
                                             'الإجمالي',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                        Expanded(
+                                          flex: 1,
+                                          child: Text(
+                                            'ربح',
                                             style: TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.bold,
@@ -267,17 +333,17 @@ class InvoiceScreen extends StatelessWidget {
                                             ),
                                           ),
                                           Expanded(
-                                            flex: 4,
+                                            flex: 3,
                                             child: Text(
                                               item.productName,
                                               style: const TextStyle(
-                                                fontSize: 15,
+                                                fontSize: 14,
                                                 fontWeight: FontWeight.w500,
                                               ),
                                             ),
                                           ),
                                           Expanded(
-                                            flex: 2,
+                                            flex: 1,
                                             child: Text(
                                               '${item.quantity}',
                                               textAlign: TextAlign.center,
@@ -288,25 +354,53 @@ class InvoiceScreen extends StatelessWidget {
                                             ),
                                           ),
                                           Expanded(
-                                            flex: 2,
+                                            flex: 1,
                                             child: Text(
-                                              '${item.unitPrice.toStringAsFixed(2)} ج',
+                                              '${item.unitPrice.toStringAsFixed(2)}',
                                               textAlign: TextAlign.center,
                                               style: const TextStyle(
                                                 fontWeight: FontWeight.w500,
-                                                fontSize: 14,
+                                                fontSize: 13,
                                               ),
                                             ),
                                           ),
                                           Expanded(
-                                            flex: 2,
+                                            flex: 1,
                                             child: Text(
-                                              '${item.total.toStringAsFixed(2)} ج',
+                                              item.discount > 0
+                                                  ? '${item.discount.toStringAsFixed(2)}'
+                                                  : '-',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w500,
+                                                fontSize: 13,
+                                                color: item.discount > 0
+                                                    ? Colors.red
+                                                    : Colors.black,
+                                              ),
+                                            ),
+                                          ),
+                                          Expanded(
+                                            flex: 1,
+                                            child: Text(
+                                              '${item.total.toStringAsFixed(2)}',
                                               textAlign: TextAlign.center,
                                               style: const TextStyle(
                                                 fontWeight: FontWeight.bold,
                                                 color: Colors.green,
                                                 fontSize: 14,
+                                              ),
+                                            ),
+                                          ),
+                                          Expanded(
+                                            flex: 1,
+                                            child: Text(
+                                              '${item.profit.toStringAsFixed(2)}',
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.blue,
+                                                fontSize: 13,
                                               ),
                                             ),
                                           ),
@@ -348,7 +442,10 @@ class InvoiceScreen extends StatelessWidget {
                                   if (invoice.tax > 0) ...[
                                     const SizedBox(height: 12),
                                     _buildTotalRow(
-                                        'الضريبة:', invoice.tax, false),
+                                      'الضريبة:',
+                                      invoice.tax,
+                                      false,
+                                    ),
                                   ],
                                   const SizedBox(height: 16),
                                   const Divider(thickness: 2),
@@ -358,11 +455,75 @@ class InvoiceScreen extends StatelessWidget {
                                     invoice.finalTotal,
                                     true,
                                   ),
+                                  const SizedBox(height: 12),
+                                  _buildTotalRow(
+                                    'إجمالي الربح:',
+                                    invoice.totalProfit,
+                                    false,
+                                    isProfit: true,
+                                  ),
                                 ],
                               ),
                             ),
 
-                            const SizedBox(height: 40),
+                            const SizedBox(height: 32),
+
+                            // Warranty Terms
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.amber[50],
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.amber[300]!),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(Icons.info_outline,
+                                          color: Colors.amber[900]),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'شروط وأحكام الضمان',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.amber[900],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  const Text(
+                                    '• مدة ضمان البرامج أسبوع واحد من تاريخ الشراء',
+                                    style: TextStyle(fontSize: 13),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  const Text(
+                                    '• الضمان على الأجهزة حسب شروط الشركة المصنعة',
+                                    style: TextStyle(fontSize: 13),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  const Text(
+                                    '• لا يتم استرجاع الأجهزة (استبدال فقط)',
+                                    style: TextStyle(fontSize: 13),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  const Text(
+                                    '• يجب إحضار هذه الفاتورة عند المطالبة بالضمان',
+                                    style: TextStyle(fontSize: 13),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  const Text(
+                                    '• الأجهزة المكسورة لا يشملها الضمان',
+                                    style: TextStyle(fontSize: 13),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: 32),
 
                             // Signature Section
                             Container(
@@ -439,7 +600,7 @@ class InvoiceScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    'للاستفسارات: اتصل بنا | شركة رياض سوفت',
+                                    'للاستفسارات: 01019187734 | Riad Soft Company',
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w500,
@@ -501,6 +662,7 @@ class InvoiceScreen extends StatelessWidget {
     double amount,
     bool isFinal, {
     bool isDiscount = false,
+    bool isProfit = false,
   }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -521,7 +683,9 @@ class InvoiceScreen extends StatelessWidget {
                 ? Colors.blue[700]
                 : isDiscount
                     ? Colors.red[700]
-                    : Colors.black87,
+                    : isProfit
+                        ? Colors.blue[700]
+                        : Colors.black87,
           ),
         ),
       ],
