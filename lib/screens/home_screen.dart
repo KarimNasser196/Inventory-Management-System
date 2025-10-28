@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:soundtry/screens/maintenance_screen.dart';
 import 'package:soundtry/screens/setting%20_screen.dart';
 import '../providers/navigation_provider.dart';
-import 'add_product_screen.dart';
+
 import 'sell_product_screen.dart';
 import 'return_product_screen.dart';
 import 'reports_screen.dart';

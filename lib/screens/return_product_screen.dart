@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -13,11 +15,10 @@ class ReturnProductScreen extends StatelessWidget {
       body: Consumer<ProductProvider>(
         builder: (context, provider, _) {
           // Get return transactions
-          final returnTransactions =
-              provider.inventoryTransactions
-                  .where((tx) => tx.transactionType == 'استرجاع من بيع')
-                  .toList()
-                ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
+          final returnTransactions = provider.inventoryTransactions
+              .where((tx) => tx.transactionType == 'استرجاع من بيع')
+              .toList()
+            ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
 
           if (returnTransactions.isEmpty) {
             return Center(
@@ -78,7 +79,9 @@ class ReturnProductScreen extends StatelessWidget {
                         children: [
                           Text(
                             'المنتجات المسترجعة',
-                            style: Theme.of(context).textTheme.headlineSmall
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineSmall
                                 ?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   fontSize: isMobile ? 24 : 32,
@@ -155,6 +158,8 @@ class ReturnProductScreen extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
+        // ignore: duplicate_ignore
+        // ignore: deprecated_member_use
         side: BorderSide(color: color.withOpacity(0.2)),
       ),
       child: Container(
@@ -205,10 +210,10 @@ class ReturnProductScreen extends StatelessWidget {
 
         // الحصول على بيانات البيع الأصلية
         final sale = tx.relatedSaleId != null
-            ? provider.sales.cast<dynamic?>().firstWhere(
-                (s) => s?.id.toString() == tx.relatedSaleId,
-                orElse: () => null,
-              )
+            ? provider.sales.cast<dynamic>().firstWhere(
+                  (s) => s?.id.toString() == tx.relatedSaleId,
+                  orElse: () => null,
+                )
             : null;
 
         final quantityReturned = tx.quantityChange;
@@ -372,10 +377,10 @@ class ReturnProductScreen extends StatelessWidget {
       runSpacing: 24,
       children: returnTransactions.map((tx) {
         final sale = tx.relatedSaleId != null
-            ? provider.sales.cast<dynamic?>().firstWhere(
-                (s) => s?.id.toString() == tx.relatedSaleId,
-                orElse: () => null,
-              )
+            ? provider.sales.cast<dynamic>().firstWhere(
+                  (s) => s?.id.toString() == tx.relatedSaleId,
+                  orElse: () => null,
+                )
             : null;
 
         final quantityReturned = tx.quantityChange;

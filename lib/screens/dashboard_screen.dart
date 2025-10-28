@@ -20,9 +20,9 @@ class DashboardScreen extends StatelessWidget {
             Text(
               'مرحباً بك في نظام إدارة المخزون',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                fontSize: isMobile ? 24 : 32, // حجم خط أكبر للـ Desktop
-              ),
+                    fontWeight: FontWeight.bold,
+                    fontSize: isMobile ? 24 : 32, // حجم خط أكبر للـ Desktop
+                  ),
             ),
             const SizedBox(height: 24),
             Text(
@@ -116,11 +116,6 @@ class DashboardScreen extends StatelessWidget {
             const SizedBox(height: 16),
             Consumer<ProductProvider>(
               builder: (context, provider, _) {
-                final totalProfit = provider.calculateTotalProfit();
-                final totalSalesAmount = provider.sales.fold<double>(
-                  0,
-                  (sum, sale) => sum + sale.totalAmount,
-                );
                 return isMobile
                     ? Column(
                         children: [
@@ -193,9 +188,9 @@ class DashboardScreen extends StatelessWidget {
                           // تأثير Hover للـ Desktop
                         },
                         child: ListTile(
-                          leading: CircleAvatar(
+                          leading: const CircleAvatar(
                             backgroundColor: Colors.green,
-                            child: const Icon(
+                            child: Icon(
                               Icons.shopping_cart,
                               color: Colors.white,
                             ),

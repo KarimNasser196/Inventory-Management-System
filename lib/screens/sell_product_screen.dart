@@ -1,4 +1,4 @@
-// lib/screens/sell_product_screen.dart (COMPLETE)
+// lib/screens/sell_product_screen.dart (FIXED PROFIT CALCULATION)
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -12,14 +12,17 @@ class CartItem {
   final Product product;
   int quantity;
   double customPrice;
+  double discount; // إضافة خصم لكل منتج
 
   CartItem({
     required this.product,
     this.quantity = 1,
     required this.customPrice,
+    this.discount = 0,
   });
 
-  double get total => customPrice * quantity;
+  double get subtotal => customPrice * quantity;
+  double get total => subtotal - discount;
 }
 
 class SellProductScreen extends StatefulWidget {
@@ -81,9 +84,12 @@ class _SellProductScreenState extends State<SellProductScreen>
     return filtered;
   }
 
-  double get _cartSubtotal => _cart.fold(0, (sum, item) => sum + item.total);
-  double get _discount => double.tryParse(_discountController.text) ?? 0;
-  double get _cartTotal => _cartSubtotal - _discount;
+  double get _cartSubtotal =>
+      _cart.fold(0.0, (sum, item) => sum + item.subtotal);
+  double get _totalDiscounts =>
+      _cart.fold(0.0, (sum, item) => sum + item.discount) +
+      (double.tryParse(_discountController.text) ?? 0);
+  double get _cartTotal => _cartSubtotal - _totalDiscounts;
 
   void _addToCart(Product product, double price, int quantity) {
     if (quantity > product.quantity) {
@@ -442,12 +448,51 @@ class _SellProductScreenState extends State<SellProductScreen>
                                               'السعر: ${item.customPrice.toStringAsFixed(2)}'),
                                         ],
                                       ),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                              'المجموع: ${item.subtotal.toStringAsFixed(2)}'),
+                                          if (item.discount > 0)
+                                            Text(
+                                              'خصم: ${item.discount.toStringAsFixed(2)}',
+                                              style: const TextStyle(
+                                                  color: Colors.red,
+                                                  fontSize: 12),
+                                            ),
+                                        ],
+                                      ),
                                       const Divider(),
-                                      Text(
-                                        'الإجمالي: ${item.total.toStringAsFixed(2)} جنيه',
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.green),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          const Text(
+                                            'الإجمالي:',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                          Text(
+                                            '${item.total.toStringAsFixed(2)} جنيه',
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.green),
+                                          ),
+                                        ],
+                                      ),
+                                      TextButton.icon(
+                                        onPressed: () =>
+                                            _showItemDiscountDialog(item),
+                                        icon: const Icon(Icons.discount,
+                                            size: 16),
+                                        label: Text(item.discount > 0
+                                            ? 'تعديل الخصم'
+                                            : 'إضافة خصم'),
+                                        style: TextButton.styleFrom(
+                                          padding: EdgeInsets.zero,
+                                          minimumSize: const Size(0, 30),
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -482,7 +527,7 @@ class _SellProductScreenState extends State<SellProductScreen>
                           TextField(
                             controller: _discountController,
                             decoration: const InputDecoration(
-                              labelText: 'الخصم',
+                              labelText: 'خصم إضافي على الفاتورة',
                               border: OutlineInputBorder(),
                               prefixIcon: Icon(Icons.discount),
                               suffixText: 'جنيه',
@@ -520,15 +565,15 @@ class _SellProductScreenState extends State<SellProductScreen>
                                             fontWeight: FontWeight.bold)),
                                   ],
                                 ),
-                                if (_discount > 0) ...[
+                                if (_totalDiscounts > 0) ...[
                                   const SizedBox(height: 8),
                                   Row(
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
                                     children: [
-                                      const Text('الخصم:'),
+                                      const Text('إجمالي الخصومات:'),
                                       Text(
-                                          '${_discount.toStringAsFixed(2)} جنيه',
+                                          '${_totalDiscounts.toStringAsFixed(2)} جنيه',
                                           style: const TextStyle(
                                               fontWeight: FontWeight.bold,
                                               color: Colors.red)),
@@ -585,6 +630,59 @@ class _SellProductScreenState extends State<SellProductScreen>
           ],
         );
       },
+    );
+  }
+
+  void _showItemDiscountDialog(CartItem item) {
+    final discountController =
+        TextEditingController(text: item.discount.toStringAsFixed(2));
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('خصم على ${item.product.name}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('المجموع الفرعي: ${item.subtotal.toStringAsFixed(2)} جنيه'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: discountController,
+              decoration: const InputDecoration(
+                labelText: 'قيمة الخصم',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.discount),
+                suffixText: 'جنيه',
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final discount = double.tryParse(discountController.text) ?? 0;
+              if (discount >= 0 && discount <= item.subtotal) {
+                setState(() {
+                  item.discount = discount;
+                });
+                Navigator.pop(context);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('الخصم يجب أن يكون أقل من المجموع')),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+            child: const Text('تطبيق'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -692,13 +790,24 @@ class _SellProductScreenState extends State<SellProductScreen>
                   style: TextStyle(fontWeight: FontWeight.bold)),
               ..._cart.map((item) => Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Text(
-                        '• ${item.product.name} × ${item.quantity} = ${item.total.toStringAsFixed(2)} جنيه'),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                            '• ${item.product.name} × ${item.quantity} = ${item.subtotal.toStringAsFixed(2)} جنيه'),
+                        if (item.discount > 0)
+                          Text(
+                              '  خصم المنتج: ${item.discount.toStringAsFixed(2)} جنيه',
+                              style: const TextStyle(
+                                  color: Colors.red, fontSize: 12)),
+                      ],
+                    ),
                   )),
               const Divider(),
               Text('المجموع الفرعي: ${_cartSubtotal.toStringAsFixed(2)} جنيه'),
-              if (_discount > 0)
-                Text('الخصم: ${_discount.toStringAsFixed(2)} جنيه',
+              if (_totalDiscounts > 0)
+                Text(
+                    'إجمالي الخصومات: ${_totalDiscounts.toStringAsFixed(2)} جنيه',
                     style: const TextStyle(color: Colors.red)),
               Text('الإجمالي: ${_cartTotal.toStringAsFixed(2)} جنيه',
                   style: const TextStyle(
@@ -729,12 +838,25 @@ class _SellProductScreenState extends State<SellProductScreen>
     setState(() => _isSelling = true);
     try {
       final provider = Provider.of<ProductProvider>(context, listen: false);
+
+      // حساب الخصم الإضافي على الفاتورة موزع على المنتجات
+      final invoiceDiscount = double.tryParse(_discountController.text) ?? 0;
+
       for (var item in _cart) {
+        // حساب نسبة هذا المنتج من المجموع الفرعي
+        final itemRatio = item.subtotal / _cartSubtotal;
+        // توزيع الخصم الإضافي حسب النسبة
+        final distributedDiscount = invoiceDiscount * itemRatio;
+        // السعر النهائي بعد كل الخصومات
+        final finalPrice =
+            (item.subtotal - item.discount - distributedDiscount) /
+                item.quantity;
+
         await provider.sellProductWithCustomPrice(
           item.product,
           item.quantity,
           _customerNameController.text,
-          item.customPrice,
+          finalPrice,
           _notesController.text.isEmpty ? null : _notesController.text,
         );
       }
@@ -753,7 +875,7 @@ class _SellProductScreenState extends State<SellProductScreen>
         customerName: _customerNameController.text,
         items: invoiceItems,
         tax: 0,
-        discount: _discount,
+        discount: _totalDiscounts,
         notes: _notesController.text.isEmpty ? null : _notesController.text,
       );
 
@@ -833,13 +955,15 @@ class _SellProductScreenState extends State<SellProductScreen>
                   DataColumn(label: Text('الكمية')),
                   DataColumn(label: Text('سعر الوحدة')),
                   DataColumn(label: Text('الإجمالي')),
-                  DataColumn(label: Text('الربح')),
+                  DataColumn(label: Text('الربح الصافي')),
                   DataColumn(label: Text('التاريخ')),
                   DataColumn(label: Text('إجراءات')),
                 ],
                 rows: provider.sales.map((sale) {
-                  final profit =
+                  // الربح الصافي = (سعر البيع - سعر الشراء) × الكمية
+                  final netProfit =
                       (sale.unitPrice - sale.purchasePrice) * sale.quantitySold;
+
                   return DataRow(
                     cells: [
                       DataCell(Text(sale.productName)),
@@ -853,10 +977,26 @@ class _SellProductScreenState extends State<SellProductScreen>
                           style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               color: Colors.green))),
-                      DataCell(Text('${profit.toStringAsFixed(2)} جنيه',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: profit > 0 ? Colors.green : Colors.red))),
+                      DataCell(
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('${netProfit.toStringAsFixed(2)} جنيه',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: netProfit > 0
+                                        ? Colors.green
+                                        : netProfit < 0
+                                            ? Colors.red
+                                            : Colors.orange)),
+                            if (netProfit == 0)
+                              const Text('(بعد الخصم)',
+                                  style: TextStyle(
+                                      fontSize: 10, color: Colors.orange)),
+                          ],
+                        ),
+                      ),
                       DataCell(Text(DateFormat('yyyy-MM-dd HH:mm')
                           .format(sale.saleDateTime))),
                       DataCell(
