@@ -28,7 +28,7 @@ class DatabaseHelper {
         return await databaseFactory.openDatabase(
           path,
           options: OpenDatabaseOptions(
-            version: 8, // تحديث إلى النسخة 8
+            version: 9, // تحديث إلى النسخة 9
             onCreate: _createDB,
             onUpgrade: _upgradeDB,
           ),
@@ -149,6 +149,38 @@ CREATE TABLE maintenance_records (
         'CREATE INDEX idx_repairCode ON maintenance_records(repairCode)',
       );
       debugPrint('Created simplified maintenance_records table');
+
+      // جدول الأصناف
+      await db.execute('''
+CREATE TABLE categories (
+  id $idType,
+  name $textType,
+  created_at $textType
+)
+''');
+      debugPrint('Created categories table');
+
+      // جدول الموردين
+      await db.execute('''
+CREATE TABLE suppliers (
+  id $idType,
+  name $textType,
+  phone $textNullableType,
+  created_at $textType
+)
+''');
+      debugPrint('Created suppliers table');
+
+      // جدول المخازن
+      await db.execute('''
+CREATE TABLE warehouses (
+  id $idType,
+  name $textType,
+  location $textNullableType,
+  created_at $textType
+)
+''');
+      debugPrint('Created warehouses table');
     } catch (e) {
       debugPrint('Error creating tables: $e');
       rethrow;
@@ -489,6 +521,45 @@ CREATE TABLE maintenance_records (
         }
       } catch (e) {
         debugPrint('Error adding deliveryDate/repairCode columns: $e');
+      }
+    }
+
+    // إضافة جداول الأصناف والموردين والمخازن
+    if (oldVersion < 9) {
+      try {
+        // جدول الأصناف
+        await db.execute('''
+CREATE TABLE IF NOT EXISTS categories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  created_at TEXT NOT NULL
+)
+''');
+        debugPrint('Created categories table');
+
+        // جدول الموردين
+        await db.execute('''
+CREATE TABLE IF NOT EXISTS suppliers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  phone TEXT,
+  created_at TEXT NOT NULL
+)
+''');
+        debugPrint('Created suppliers table');
+
+        // جدول المخازن
+        await db.execute('''
+CREATE TABLE IF NOT EXISTS warehouses (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  location TEXT,
+  created_at TEXT NOT NULL
+)
+''');
+        debugPrint('Created warehouses table');
+      } catch (e) {
+        debugPrint('Error creating categories/suppliers/warehouses tables: $e');
       }
     }
   }

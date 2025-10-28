@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:soundtry/screens/maintenance_password_changescreen.dart';
 import 'dart:io';
 import '../services/database_helper.dart';
 import '../services/backup_service.dart';
@@ -87,6 +88,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     const ChangePasswordScreen(),
                               ),
                             );
+                          },
+                        ),
+                        const Divider(),
+                        ListTile(
+                          leading: const Icon(
+                            Icons.build,
+                            color: Colors.orange,
+                          ),
+                          title: const Text('تغيير كلمة سر الصيانة'),
+                          subtitle: const Text('تحديث كلمة السر لنظام الصيانة'),
+                          trailing:
+                              const Icon(Icons.arrow_forward_ios, size: 16),
+                          onTap: () {
+                            // Navigator.push(
+                            //   context,
+                            //   MaterialPageRoute(
+                            //     builder: (context) =>
+                            //         const MaintenancePasswordChangeScreen(),
+                            //   ),
+                            // );
                           },
                         ),
                       ],

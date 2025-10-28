@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/navigation_provider.dart';
+import 'manage_categories_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -66,6 +67,19 @@ class DashboardScreen extends StatelessWidget {
                         Colors.purple,
                         () => _navigateToScreen(context, 4),
                       ),
+                      const SizedBox(height: 12),
+                      _buildQuickActionCard(
+                        context,
+                        'إدارة البيانات',
+                        Icons.settings_applications,
+                        Colors.teal,
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ManageCategoriesScreen(),
+                          ),
+                        ),
+                      ),
                     ],
                   )
                 : GridView.count(
@@ -103,6 +117,18 @@ class DashboardScreen extends StatelessWidget {
                         Icons.bar_chart,
                         Colors.purple,
                         () => _navigateToScreen(context, 4),
+                      ),
+                      _buildQuickActionCard(
+                        context,
+                        'إدارة البيانات',
+                        Icons.settings_applications,
+                        Colors.teal,
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ManageCategoriesScreen(),
+                          ),
+                        ),
                       ),
                     ],
                   ),

@@ -1,22 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:soundtry/screens/add_product_screen.dart';
 import '../providers/product_provider.dart';
 import '../models/product.dart';
-import 'add_product_screen.dart';
+import '../services/database_helper.dart';
+import '../widgets/password_dialog.dart';
 
 enum ViewMode { cards, table }
 
-class ProductsListScreen extends StatefulWidget {
-  const ProductsListScreen({super.key});
+class ProductsListScreenUpdated extends StatefulWidget {
+  const ProductsListScreenUpdated({super.key});
 
   @override
-  State<ProductsListScreen> createState() => _ProductsListScreenState();
+  State<ProductsListScreenUpdated> createState() =>
+      _ProductsListScreenUpdatedState();
 }
 
-class _ProductsListScreenState extends State<ProductsListScreen> {
+class _ProductsListScreenUpdatedState extends State<ProductsListScreenUpdated> {
+  final DatabaseHelper _dbHelper = DatabaseHelper.instance;
   late TextEditingController _searchController;
   String? _selectedCategoryFilter;
-  List<String> _availableCategories = [];
+  String? _selectedWarehouseFilter;
+  String? _selectedSupplierFilter;
+
+  List<Map<String, dynamic>> _availableCategories = [];
+  List<Map<String, dynamic>> _availableWarehouses = [];
+  List<Map<String, dynamic>> _availableSuppliers = [];
+
   ViewMode _viewMode = ViewMode.cards;
 
   @override
@@ -26,18 +36,20 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
     _searchController.addListener(() {
       setState(() {});
     });
-    _loadCategories();
+    _loadFilterOptions();
   }
 
-  void _loadCategories() {
-    final provider = Provider.of<ProductProvider>(context, listen: false);
-    final categories = provider.products
-        .where((p) => p.category != null && p.category!.isNotEmpty)
-        .map((p) => p.category!)
-        .toSet()
-        .toList();
+  Future<void> _loadFilterOptions() async {
+    final db = await _dbHelper.database;
+
+    final categories = await db.query('categories', orderBy: 'name ASC');
+    final warehouses = await db.query('warehouses', orderBy: 'name ASC');
+    final suppliers = await db.query('suppliers', orderBy: 'name ASC');
+
     setState(() {
       _availableCategories = categories;
+      _availableWarehouses = warehouses;
+      _availableSuppliers = suppliers;
     });
   }
 
@@ -52,8 +64,21 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
 
     // Filter by category
     if (_selectedCategoryFilter != null) {
+      filtered =
+          filtered.where((p) => p.category == _selectedCategoryFilter).toList();
+    }
+
+    // Filter by warehouse
+    if (_selectedWarehouseFilter != null) {
       filtered = filtered
-          .where((p) => p.category == _selectedCategoryFilter)
+          .where((p) => p.warehouse == _selectedWarehouseFilter)
+          .toList();
+    }
+
+    // Filter by supplier
+    if (_selectedSupplierFilter != null) {
+      filtered = filtered
+          .where((p) => p.supplierName == _selectedSupplierFilter)
           .toList();
     }
 
@@ -66,7 +91,7 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
     return Scaffold(
       body: Column(
         children: [
-          // Search bar, filter and Add button
+          // Search bar, filters and Add button
           Container(
             padding: EdgeInsets.all(isMobile ? 16 : 24),
             decoration: BoxDecoration(
@@ -115,37 +140,6 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                             listen: false,
                           ).setSearchQuery(query);
                           setState(() {});
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: DropdownButtonFormField<String?>(
-                        value: _selectedCategoryFilter,
-                        decoration: InputDecoration(
-                          labelText: 'تصفية حسب الصنف',
-                          prefixIcon: const Icon(Icons.filter_list),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          filled: true,
-                          fillColor: Colors.grey[50],
-                        ),
-                        items: [
-                          const DropdownMenuItem(
-                            value: null,
-                            child: Text('الكل'),
-                          ),
-                          ..._availableCategories.map(
-                            (cat) =>
-                                DropdownMenuItem(value: cat, child: Text(cat)),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedCategoryFilter = value;
-                          });
                         },
                       ),
                     ),
@@ -208,6 +202,113 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Filters row
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String?>(
+                        value: _selectedCategoryFilter,
+                        decoration: InputDecoration(
+                          labelText: 'تصفية حسب الصنف',
+                          prefixIcon: const Icon(Icons.category),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                        ),
+                        items: [
+                          const DropdownMenuItem(
+                            value: null,
+                            child: Text('الكل'),
+                          ),
+                          ..._availableCategories.map(
+                            (cat) => DropdownMenuItem(
+                              value: cat['name'].toString(),
+                              child: Text(cat['name'].toString()),
+                            ),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedCategoryFilter = value;
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String?>(
+                        value: _selectedWarehouseFilter,
+                        decoration: InputDecoration(
+                          labelText: 'تصفية حسب المخزن',
+                          prefixIcon: const Icon(Icons.warehouse),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                        ),
+                        items: [
+                          const DropdownMenuItem(
+                            value: null,
+                            child: Text('الكل'),
+                          ),
+                          ..._availableWarehouses.map(
+                            (warehouse) => DropdownMenuItem(
+                              value: warehouse['name'].toString(),
+                              child: Text(warehouse['name'].toString()),
+                            ),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedWarehouseFilter = value;
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String?>(
+                        value: _selectedSupplierFilter,
+                        decoration: InputDecoration(
+                          labelText: 'تصفية حسب المورد',
+                          prefixIcon: const Icon(Icons.store),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                        ),
+                        items: [
+                          const DropdownMenuItem(
+                            value: null,
+                            child: Text('الكل'),
+                          ),
+                          ..._availableSuppliers.map(
+                            (supplier) => DropdownMenuItem(
+                              value: supplier['name'].toString(),
+                              child: Text(supplier['name'].toString()),
+                            ),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedSupplierFilter = value;
+                          });
+                        },
                       ),
                     ),
                   ],
@@ -306,7 +407,6 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
               DataColumn(label: Text('المخزن')),
               DataColumn(label: Text('المورد')),
               DataColumn(label: Text('الكمية')),
-
               DataColumn(label: Text('إجراءات')),
             ],
             rows: products.map((product) {
@@ -344,7 +444,6 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                       ),
                     ),
                   ),
-
                   DataCell(
                     Row(
                       mainAxisSize: MainAxisSize.min,
@@ -516,41 +615,6 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                         ),
                       ],
                     ),
-                    if (product.specifications != null &&
-                        product.specifications!.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            Icons.description,
-                            size: 16,
-                            color: Colors.grey[600],
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'المواصفات:',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              product.specifications!,
-                              textAlign: TextAlign.end,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
                   ],
                 ),
               ),
@@ -564,9 +628,8 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: product.quantity > 0
-                      ? Colors.green[50]
-                      : Colors.red[50],
+                  color:
+                      product.quantity > 0 ? Colors.green[50] : Colors.red[50],
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -603,7 +666,7 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                     child: OutlinedButton.icon(
                       onPressed: () => _showProductDetails(context, product),
                       icon: const Icon(Icons.visibility, size: 18),
-                      label: const Text('عرض التفاصيل'),
+                      label: const Text('عرض'),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
@@ -876,25 +939,27 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
   void _navigateToAddProduct(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const AddProductScreen()),
+      MaterialPageRoute(builder: (context) => const AddProductScreenUpdated()),
     ).then((_) {
-      _loadCategories();
+      _loadFilterOptions();
     });
   }
 
   void _navigateToEditProduct(BuildContext context, Product product) {
+    // التعديل يتطلب كلمة السر في شاشة التعديل نفسها
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AddProductScreen(product: product),
+        builder: (context) => AddProductScreenUpdated(product: product),
       ),
     ).then((_) {
-      _loadCategories();
+      _loadFilterOptions();
     });
   }
 
-  void _confirmDelete(BuildContext context, Product product) {
-    showDialog(
+  void _confirmDelete(BuildContext context, Product product) async {
+    // أولاً نظهر تأكيد الحذف
+    final bool? wantToDelete = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('تأكيد الحذف'),
@@ -912,26 +977,40 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, false),
             child: const Text('إلغاء'),
           ),
           ElevatedButton(
-            onPressed: () {
-              Provider.of<ProductProvider>(
-                context,
-                listen: false,
-              ).deleteProduct(product.id!);
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('تم حذف المنتج بنجاح')),
-              );
-              _loadCategories();
-            },
+            onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('حذف'),
           ),
         ],
       ),
     );
+
+    if (wantToDelete != true) return;
+
+    // ثم نطلب كلمة السر
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => const PasswordDialog(
+        title: 'تأكيد الحذف',
+        message: 'أدخل كلمة السر لحذف المنتج',
+      ),
+    );
+
+    if (confirmed == true) {
+      Provider.of<ProductProvider>(
+        context,
+        listen: false,
+      ).deleteProduct(product.id!);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم حذف المنتج بنجاح')),
+      );
+
+      _loadFilterOptions();
+    }
   }
 }

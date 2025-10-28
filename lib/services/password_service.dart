@@ -36,32 +36,37 @@ class PasswordService {
     }
   }
 
-  /// التحقق من كلمة السر (المخزون)
-  static Future<bool> verifyPassword(String password) async {
+  /// التحقق من كلمة السر مع دعم أنواع مختلفة
+  static Future<bool> verifyPassword(
+    String password, [
+    String type = 'warehouse',
+  ]) async {
     final prefs = await SharedPreferences.getInstance();
-    final storedHash = prefs.getString(_passwordKey);
+
+    // تحديد المفتاح بناءً على النوع
+    final key = type == 'maintenance' ? _maintenancePasswordKey : _passwordKey;
+    final defaultPw =
+        type == 'maintenance' ? _defaultMaintenancePassword : _defaultPassword;
+
+    final storedHash = prefs.getString(key);
 
     if (storedHash == null) {
       await initializePassword();
-      return password == _defaultPassword;
+      return password == defaultPw;
     }
 
     final inputHash = _hashPassword(password);
     return inputHash == storedHash;
   }
 
+  /// التحقق من كلمة سر المخزون (للتوافق مع الكود القديم)
+  static Future<bool> verifyWarehousePassword(String password) async {
+    return verifyPassword(password, 'warehouse');
+  }
+
   /// التحقق من كلمة سر الصيانة
   static Future<bool> verifyMaintenancePassword(String password) async {
-    final prefs = await SharedPreferences.getInstance();
-    final storedHash = prefs.getString(_maintenancePasswordKey);
-
-    if (storedHash == null) {
-      await initializePassword();
-      return password == _defaultMaintenancePassword;
-    }
-
-    final inputHash = _hashPassword(password);
-    return inputHash == storedHash;
+    return verifyPassword(password, 'maintenance');
   }
 
   /// تغيير كلمة السر (المخزون)
@@ -70,7 +75,7 @@ class PasswordService {
     String newPassword,
   ) async {
     // التحقق من كلمة السر القديمة
-    final isValid = await verifyPassword(oldPassword);
+    final isValid = await verifyPassword(oldPassword, 'warehouse');
     if (!isValid) {
       return false;
     }
@@ -89,7 +94,7 @@ class PasswordService {
     String newPassword,
   ) async {
     // التحقق من كلمة السر القديمة
-    final isValid = await verifyMaintenancePassword(oldPassword);
+    final isValid = await verifyPassword(oldPassword, 'maintenance');
     if (!isValid) {
       return false;
     }
@@ -104,7 +109,7 @@ class PasswordService {
 
   /// التحقق من كلمة سر للتعديل أو الحذف (تستخدم كلمة سر المخزون)
   static Future<bool> verifyOperationPassword(String password) async {
-    return await verifyPassword(password);
+    return await verifyPassword(password, 'warehouse');
   }
 
   /// إعادة تعيين كلمة السر إلى الافتراضية

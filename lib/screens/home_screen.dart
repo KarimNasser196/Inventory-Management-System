@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:soundtry/screens/maintenance_screen.dart';
+import 'package:soundtry/screens/products_list_screen_improved.dart';
 import 'package:soundtry/screens/setting%20_screen.dart';
 import '../providers/navigation_provider.dart';
 
@@ -10,7 +11,6 @@ import 'sell_product_screen.dart';
 import 'return_product_screen.dart';
 import 'reports_screen.dart';
 import 'dashboard_screen.dart';
-import 'products_list_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -21,7 +21,7 @@ class HomeScreen extends StatelessWidget {
     final isMobile = MediaQuery.of(context).size.width < 600;
     final List<Widget> screens = [
       const DashboardScreen(),
-      const ProductsListScreen(),
+      const ProductsListScreenUpdated(),
       const SellProductScreen(),
       const ReturnProductScreen(),
       const ReportsScreen(),

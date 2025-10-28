@@ -404,8 +404,8 @@ class _AddMaintenanceScreenState extends State<AddMaintenanceScreen> {
                 setState(() {
                   final currentPaid =
                       double.tryParse(_paidAmountController.text) ?? 0;
-                  _paidAmountController.text = (currentPaid + amount)
-                      .toString();
+                  _paidAmountController.text =
+                      (currentPaid + amount).toString();
                 });
                 Navigator.pop(context);
 
