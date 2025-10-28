@@ -1,4 +1,4 @@
-// lib/screens/invoice_screen.dart (UPDATED - Enhanced for B&W Printing)
+// lib/screens/invoice_screen.dart (UPDATED - B&W Optimized with Real Barcode)
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -12,7 +12,8 @@ class InvoiceScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('yyyy-MM-dd HH:mm', 'ar');
+    final dateFormat = DateFormat('dd/MM/yyyy', 'ar');
+    final timeFormat = DateFormat('hh:mm a', 'ar');
 
     return Scaffold(
       appBar: AppBar(
@@ -37,29 +38,17 @@ class InvoiceScreen extends StatelessWidget {
                   constraints: const BoxConstraints(maxWidth: 800),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.3),
-                        spreadRadius: 2,
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
+                    border: Border.all(color: Colors.black, width: 2),
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Header
+                      // Header - Black and White optimized
                       Container(
-                        padding: const EdgeInsets.all(32),
+                        padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Colors.blue[700]!, Colors.blue[500]!],
-                          ),
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(12),
-                            topRight: Radius.circular(12),
+                          border: Border(
+                            bottom: BorderSide(color: Colors.black, width: 2),
                           ),
                         ),
                         child: Row(
@@ -71,34 +60,34 @@ class InvoiceScreen extends StatelessWidget {
                                 const Text(
                                   'Riad Soft Company',
                                   style: TextStyle(
-                                    fontSize: 32,
+                                    fontSize: 28,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.white,
+                                    color: Colors.black,
                                   ),
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 4),
                                 const Text(
                                   '01019187734',
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.white,
+                                    color: Colors.black,
                                   ),
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 8),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 8),
+                                      horizontal: 12, vertical: 6),
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                        color: Colors.black, width: 2),
                                   ),
-                                  child: Text(
+                                  child: const Text(
                                     'فاتورة مبيعات',
                                     style: TextStyle(
-                                      fontSize: 20,
+                                      fontSize: 18,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.blue[700],
+                                      color: Colors.black,
                                     ),
                                   ),
                                 ),
@@ -106,22 +95,42 @@ class InvoiceScreen extends StatelessWidget {
                             ),
                             Column(
                               children: [
+                                // Barcode placeholder - سيتم استبداله بالصورة الحقيقية في PDF
                                 Container(
-                                  padding: const EdgeInsets.all(8),
+                                  width: 150,
+                                  height: 60,
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                        color: Colors.black, width: 1),
                                   ),
-                                  child: Icon(Icons.qr_code,
-                                      size: 60, color: Colors.blue[700]),
+                                  child: Image.asset(
+                                    'assets/barcode.jpg',
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Center(
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            const Icon(Icons.qr_code, size: 30),
+                                            Text(
+                                              invoice.invoiceNumber,
+                                              style:
+                                                  const TextStyle(fontSize: 8),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 4),
                                 Text(
                                   invoice.invoiceNumber,
                                   style: const TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 10,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.white,
+                                    color: Colors.black,
                                   ),
                                 ),
                               ],
@@ -130,486 +139,226 @@ class InvoiceScreen extends StatelessWidget {
                         ),
                       ),
 
-                      // Content
+                      // Invoice Info
                       Container(
-                        padding: const EdgeInsets.all(32),
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom:
+                                BorderSide(color: Colors.grey[400]!, width: 1),
+                          ),
+                        ),
                         child: Column(
-                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Invoice Info
-                            Container(
-                              padding: const EdgeInsets.all(20),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                _buildInfoItem(
+                                    'رقم الفاتورة:', invoice.invoiceNumber),
+                                _buildInfoItem('العميل:', invoice.customerName),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                _buildInfoItem(
+                                  'التاريخ:',
+                                  dateFormat.format(invoice.invoiceDate),
+                                ),
+                                _buildInfoItem(
+                                  'الوقت:',
+                                  timeFormat.format(invoice.invoiceDate),
+                                ),
+                              ],
+                            ),
+                            if (invoice.notes != null &&
+                                invoice.notes!.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              _buildInfoItem('ملاحظات:', invoice.notes!),
+                            ],
+                          ],
+                        ),
+                      ),
+
+                      // Items Table - Without profit column
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        child: Table(
+                          border:
+                              TableBorder.all(color: Colors.black, width: 1),
+                          columnWidths: const {
+                            0: FlexColumnWidth(0.5),
+                            1: FlexColumnWidth(3),
+                            2: FlexColumnWidth(1),
+                            3: FlexColumnWidth(1.5),
+                            4: FlexColumnWidth(1.2),
+                            5: FlexColumnWidth(1.5),
+                          },
+                          children: [
+                            // Header
+                            TableRow(
                               decoration: BoxDecoration(
-                                color: Colors.grey[50],
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.grey[300]!),
+                                color: Colors.grey[300],
                               ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                              children: const [
+                                _TableHeader('#'),
+                                _TableHeader('المنتج'),
+                                _TableHeader('الكمية'),
+                                _TableHeader('السعر'),
+                                _TableHeader('خصم'),
+                                _TableHeader('الإجمالي'),
+                              ],
+                            ),
+                            // Items
+                            ...invoice.items.asMap().entries.map((entry) {
+                              final index = entry.key + 1;
+                              final item = entry.value;
+                              return TableRow(
                                 children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        _buildInfoRow(
-                                          'رقم الفاتورة:',
-                                          invoice.invoiceNumber,
-                                          Icons.receipt,
-                                        ),
-                                        const SizedBox(height: 12),
-                                        _buildInfoRow(
-                                          'التاريخ:',
-                                          dateFormat
-                                              .format(invoice.invoiceDate),
-                                          Icons.calendar_today,
-                                        ),
-                                      ],
-                                    ),
+                                  _TableCell(index.toString()),
+                                  _TableCell(item.productName,
+                                      align: TextAlign.right),
+                                  _TableCell(item.quantity.toString()),
+                                  _TableCell(
+                                      '${item.unitPrice.toStringAsFixed(2)}'),
+                                  _TableCell(
+                                    item.discount > 0
+                                        ? '${item.discount.toStringAsFixed(2)}'
+                                        : '-',
                                   ),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        _buildInfoRow(
-                                          'اسم العميل:',
-                                          invoice.customerName,
-                                          Icons.person,
-                                        ),
-                                        if (invoice.notes != null &&
-                                            invoice.notes!.isNotEmpty) ...[
-                                          const SizedBox(height: 12),
-                                          _buildInfoRow(
-                                            'ملاحظات:',
-                                            invoice.notes!,
-                                            Icons.note,
-                                          ),
-                                        ],
-                                      ],
-                                    ),
+                                  _TableCell(
+                                    '${item.total.toStringAsFixed(2)}',
+                                    bold: true,
                                   ),
                                 ],
+                              );
+                            }).toList(),
+                          ],
+                        ),
+                      ),
+
+                      // Totals
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.black, width: 2),
+                          ),
+                          child: Column(
+                            children: [
+                              _buildTotalRow(
+                                  'المجموع الفرعي:', invoice.subtotal),
+                              if (invoice.discount > 0) ...[
+                                const SizedBox(height: 8),
+                                _buildTotalRow('الخصم:', invoice.discount,
+                                    isDiscount: true),
+                              ],
+                              if (invoice.tax > 0) ...[
+                                const SizedBox(height: 8),
+                                _buildTotalRow('الضريبة:', invoice.tax),
+                              ],
+                              const SizedBox(height: 8),
+                              const Divider(color: Colors.black, thickness: 2),
+                              const SizedBox(height: 8),
+                              _buildTotalRow(
+                                'الإجمالي النهائي:',
+                                invoice.finalTotal,
+                                isFinal: true,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Warranty Terms
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 20),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.black, width: 1),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'شروط وأحكام الضمان',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                decoration: TextDecoration.underline,
                               ),
                             ),
+                            const SizedBox(height: 8),
+                            const Text(
+                                '• مدة ضمان البرامج أسبوع واحد من تاريخ الشراء',
+                                style: TextStyle(fontSize: 12)),
+                            const Text(
+                                '• الضمان على الأجهزة حسب شروط الشركة المصنعة',
+                                style: TextStyle(fontSize: 12)),
+                            const Text('• لا يتم استرجاع الأجهزة (استبدال فقط)',
+                                style: TextStyle(fontSize: 12)),
+                            const Text(
+                                '• يجب إحضار هذه الفاتورة عند المطالبة بالضمان',
+                                style: TextStyle(fontSize: 12)),
+                          ],
+                        ),
+                      ),
 
-                            const SizedBox(height: 32),
+                      const SizedBox(height: 20),
 
-                            // Items Table
-                            Container(
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey[300]!),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // Table Header
-                                  Container(
-                                    padding: const EdgeInsets.all(16),
-                                    decoration: BoxDecoration(
-                                      color: Colors.blue[700],
-                                      borderRadius: const BorderRadius.only(
-                                        topLeft: Radius.circular(8),
-                                        topRight: Radius.circular(8),
-                                      ),
-                                    ),
-                                    child: const Row(
-                                      children: [
-                                        Expanded(
-                                          flex: 1,
-                                          child: Text(
-                                            '#',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                            ),
-                                            textAlign: TextAlign.center,
-                                          ),
-                                        ),
-                                        Expanded(
-                                          flex: 3,
-                                          child: Text(
-                                            'المنتج',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                        ),
-                                        Expanded(
-                                          flex: 1,
-                                          child: Text(
-                                            'الكمية',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                            ),
-                                            textAlign: TextAlign.center,
-                                          ),
-                                        ),
-                                        Expanded(
-                                          flex: 1,
-                                          child: Text(
-                                            'السعر',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                            ),
-                                            textAlign: TextAlign.center,
-                                          ),
-                                        ),
-                                        Expanded(
-                                          flex: 1,
-                                          child: Text(
-                                            'خصم',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                            ),
-                                            textAlign: TextAlign.center,
-                                          ),
-                                        ),
-                                        Expanded(
-                                          flex: 1,
-                                          child: Text(
-                                            'الإجمالي',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                            ),
-                                            textAlign: TextAlign.center,
-                                          ),
-                                        ),
-                                        Expanded(
-                                          flex: 1,
-                                          child: Text(
-                                            'ربح',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                            ),
-                                            textAlign: TextAlign.center,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  // Table Body
-                                  ...invoice.items.asMap().entries.map((entry) {
-                                    final index = entry.key;
-                                    final item = entry.value;
-                                    final isEven = index % 2 == 0;
-
-                                    return Container(
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: isEven
-                                            ? Colors.white
-                                            : Colors.grey[50],
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Expanded(
-                                            flex: 1,
-                                            child: Text(
-                                              '${index + 1}',
-                                              textAlign: TextAlign.center,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ),
-                                          Expanded(
-                                            flex: 3,
-                                            child: Text(
-                                              item.productName,
-                                              style: const TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ),
-                                          Expanded(
-                                            flex: 1,
-                                            child: Text(
-                                              '${item.quantity}',
-                                              textAlign: TextAlign.center,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ),
-                                          Expanded(
-                                            flex: 1,
-                                            child: Text(
-                                              '${item.unitPrice.toStringAsFixed(2)}',
-                                              textAlign: TextAlign.center,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w500,
-                                                fontSize: 13,
-                                              ),
-                                            ),
-                                          ),
-                                          Expanded(
-                                            flex: 1,
-                                            child: Text(
-                                              item.discount > 0
-                                                  ? '${item.discount.toStringAsFixed(2)}'
-                                                  : '-',
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.w500,
-                                                fontSize: 13,
-                                                color: item.discount > 0
-                                                    ? Colors.red
-                                                    : Colors.black,
-                                              ),
-                                            ),
-                                          ),
-                                          Expanded(
-                                            flex: 1,
-                                            child: Text(
-                                              '${item.total.toStringAsFixed(2)}',
-                                              textAlign: TextAlign.center,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.green,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ),
-                                          Expanded(
-                                            flex: 1,
-                                            child: Text(
-                                              '${item.profit.toStringAsFixed(2)}',
-                                              textAlign: TextAlign.center,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.blue,
-                                                fontSize: 13,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  }).toList(),
-                                ],
+                      // Seller Signature Only
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'توقيع البائع',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-
-                            const SizedBox(height: 32),
-
-                            // Totals
+                            const SizedBox(height: 30),
                             Container(
-                              padding: const EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[50],
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.grey[300]!),
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  _buildTotalRow(
-                                    'المجموع الفرعي:',
-                                    invoice.subtotal,
-                                    false,
-                                  ),
-                                  if (invoice.discount > 0) ...[
-                                    const SizedBox(height: 12),
-                                    _buildTotalRow(
-                                      'الخصم:',
-                                      invoice.discount,
-                                      false,
-                                      isDiscount: true,
-                                    ),
-                                  ],
-                                  if (invoice.tax > 0) ...[
-                                    const SizedBox(height: 12),
-                                    _buildTotalRow(
-                                      'الضريبة:',
-                                      invoice.tax,
-                                      false,
-                                    ),
-                                  ],
-                                  const SizedBox(height: 16),
-                                  const Divider(thickness: 2),
-                                  const SizedBox(height: 16),
-                                  _buildTotalRow(
-                                    'الإجمالي النهائي:',
-                                    invoice.finalTotal,
-                                    true,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  _buildTotalRow(
-                                    'إجمالي الربح:',
-                                    invoice.totalProfit,
-                                    false,
-                                    isProfit: true,
-                                  ),
-                                ],
-                              ),
+                              width: 200,
+                              height: 2,
+                              color: Colors.black,
                             ),
+                          ],
+                        ),
+                      ),
 
-                            const SizedBox(height: 32),
-
-                            // Warranty Terms
-                            Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: Colors.amber[50],
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.amber[300]!),
+                      // Footer
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: const BoxDecoration(
+                          border: Border(
+                            top: BorderSide(color: Colors.black, width: 2),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            const Text(
+                              'شكراً لتعاملكم معنا',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(Icons.info_outline,
-                                          color: Colors.amber[900]),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'شروط وأحكام الضمان',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.amber[900],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  const Text(
-                                    '• مدة ضمان البرامج أسبوع واحد من تاريخ الشراء',
-                                    style: TextStyle(fontSize: 13),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  const Text(
-                                    '• الضمان على الأجهزة حسب شروط الشركة المصنعة',
-                                    style: TextStyle(fontSize: 13),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  const Text(
-                                    '• لا يتم استرجاع الأجهزة (استبدال فقط)',
-                                    style: TextStyle(fontSize: 13),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  const Text(
-                                    '• يجب إحضار هذه الفاتورة عند المطالبة بالضمان',
-                                    style: TextStyle(fontSize: 13),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  const Text(
-                                    '• الأجهزة المكسورة لا يشملها الضمان',
-                                    style: TextStyle(fontSize: 13),
-                                  ),
-                                ],
-                              ),
+                              textAlign: TextAlign.center,
                             ),
-
-                            const SizedBox(height: 32),
-
-                            // Signature Section
-                            Container(
-                              padding: const EdgeInsets.symmetric(vertical: 20),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Text(
-                                        'توقيع البائع',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 40),
-                                      Container(
-                                        width: 150,
-                                        height: 2,
-                                        color: Colors.grey[400],
-                                      ),
-                                    ],
-                                  ),
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Text(
-                                        'توقيع العميل',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 40),
-                                      Container(
-                                        width: 150,
-                                        height: 2,
-                                        color: Colors.grey[400],
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                            const SizedBox(height: 4),
+                            Text(
+                              'للاستفسارات: 01019187734 | Riad Soft Company',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[700],
                               ),
-                            ),
-
-                            const SizedBox(height: 20),
-
-                            // Footer
-                            Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: Colors.blue[50],
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.blue[200]!),
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    'شكراً لتعاملكم معنا',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.blue[700],
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'للاستفسارات: 01019187734 | Riad Soft Company',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.grey[700],
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              ),
+                              textAlign: TextAlign.center,
                             ),
                           ],
                         ),
@@ -626,66 +375,50 @@ class InvoiceScreen extends StatelessWidget {
         onPressed: () => _printInvoice(context),
         icon: const Icon(Icons.print),
         label: const Text('طباعة الفاتورة'),
-        backgroundColor: Colors.blue[700],
+        backgroundColor: Colors.blue,
       ),
     );
   }
 
-  Widget _buildInfoRow(String label, String value, IconData icon) {
+  Widget _buildInfoItem(String label, String value) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 18, color: Colors.blue[700]),
-        const SizedBox(width: 8),
         Text(
           label,
           style: const TextStyle(
-            fontSize: 14,
+            fontSize: 13,
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+        const SizedBox(width: 4),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 13),
         ),
       ],
     );
   }
 
-  Widget _buildTotalRow(
-    String label,
-    double amount,
-    bool isFinal, {
-    bool isDiscount = false,
-    bool isProfit = false,
-  }) {
+  Widget _buildTotalRow(String label, double amount,
+      {bool isFinal = false, bool isDiscount = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           label,
           style: TextStyle(
-            fontSize: isFinal ? 20 : 16,
+            fontSize: isFinal ? 16 : 14,
             fontWeight: FontWeight.bold,
           ),
         ),
         Text(
           '${amount.toStringAsFixed(2)} جنيه',
           style: TextStyle(
-            fontSize: isFinal ? 24 : 16,
+            fontSize: isFinal ? 18 : 14,
             fontWeight: FontWeight.bold,
-            color: isFinal
-                ? Colors.blue[700]
-                : isDiscount
-                    ? Colors.red[700]
-                    : isProfit
-                        ? Colors.blue[700]
-                        : Colors.black87,
+            color: isDiscount ? Colors.red : Colors.black,
+            decoration: isFinal ? TextDecoration.underline : null,
           ),
         ),
       ],
@@ -728,5 +461,53 @@ class InvoiceScreen extends StatelessWidget {
         ),
       );
     }
+  }
+}
+
+class _TableHeader extends StatelessWidget {
+  final String text;
+
+  const _TableHeader(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+        ),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+}
+
+class _TableCell extends StatelessWidget {
+  final String text;
+  final TextAlign align;
+  final bool bold;
+
+  const _TableCell(
+    this.text, {
+    this.align = TextAlign.center,
+    this.bold = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+        ),
+        textAlign: align,
+      ),
+    );
   }
 }
