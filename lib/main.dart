@@ -1,11 +1,11 @@
-// lib/main.dart (UPDATED)
+// lib/main.dart
 
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:soundtry/providers/maintenance_provider.dart';
 import 'package:soundtry/providers/navigation_provider.dart';
-import 'package:soundtry/screens/login_screen.dart';
+import 'package:soundtry/screens/system_selection_screen.dart';
 import 'package:soundtry/services/password_service.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -19,7 +19,8 @@ void main() async {
   } else {
     throw UnsupportedError('This app is only supported on Windows desktop');
   }
-  // تهيئة كلمة السر
+
+  // تهيئة كلمات السر (المخزون والصيانة)
   await PasswordService.initializePassword();
 
   runApp(const MyApp());
@@ -38,7 +39,7 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: 'نظام إدارة المخزون',
+        title: 'نظام إدارة المخزون والصيانة',
         theme: ThemeData(
           useMaterial3: true,
           primarySwatch: Colors.blue,
@@ -52,8 +53,7 @@ class MyApp extends StatelessWidget {
           GlobalCupertinoLocalizations.delegate,
         ],
         supportedLocales: const [Locale('ar', 'SA')],
-        home:
-            const LoginScreen(), // تغيير الشاشة الرئيسية إلى شاشة تسجيل الدخول
+        home: const SystemSelectionScreen(), // بدء التطبيق بشاشة اختيار النظام
       ),
     );
   }
