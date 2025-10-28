@@ -33,28 +33,42 @@ class _ProductsListScreenUpdatedState extends State<ProductsListScreenUpdated> {
   void initState() {
     super.initState();
     _searchController = TextEditingController();
-    _searchController.addListener(() {
-      setState(() {});
-    });
+    _searchController.addListener(_onSearchChanged);
     _loadFilterOptions();
   }
 
+  // دالة منفصلة للاستماع للتغييرات مع فحص mounted
+  void _onSearchChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   Future<void> _loadFilterOptions() async {
-    final db = await _dbHelper.database;
+    try {
+      final db = await _dbHelper.database;
 
-    final categories = await db.query('categories', orderBy: 'name ASC');
-    final warehouses = await db.query('warehouses', orderBy: 'name ASC');
-    final suppliers = await db.query('suppliers', orderBy: 'name ASC');
+      final categories = await db.query('categories', orderBy: 'name ASC');
+      final warehouses = await db.query('warehouses', orderBy: 'name ASC');
+      final suppliers = await db.query('suppliers', orderBy: 'name ASC');
 
-    setState(() {
-      _availableCategories = categories;
-      _availableWarehouses = warehouses;
-      _availableSuppliers = suppliers;
-    });
+      // فحص mounted قبل استدعاء setState
+      if (mounted) {
+        setState(() {
+          _availableCategories = categories;
+          _availableWarehouses = warehouses;
+          _availableSuppliers = suppliers;
+        });
+      }
+    } catch (e) {
+      print('Error loading filter options: $e');
+    }
   }
 
   @override
   void dispose() {
+    // إزالة المستمع قبل dispose
+    _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     super.dispose();
   }
@@ -124,7 +138,6 @@ class _ProductsListScreenUpdatedState extends State<ProductsListScreenUpdated> {
                                       context,
                                       listen: false,
                                     ).setSearchQuery('');
-                                    setState(() {});
                                   },
                                 )
                               : null,
@@ -139,7 +152,6 @@ class _ProductsListScreenUpdatedState extends State<ProductsListScreenUpdated> {
                             context,
                             listen: false,
                           ).setSearchQuery(query);
-                          setState(() {});
                         },
                       ),
                     ),
@@ -160,9 +172,11 @@ class _ProductsListScreenUpdatedState extends State<ProductsListScreenUpdated> {
                                   : Colors.grey,
                             ),
                             onPressed: () {
-                              setState(() {
-                                _viewMode = ViewMode.cards;
-                              });
+                              if (mounted) {
+                                setState(() {
+                                  _viewMode = ViewMode.cards;
+                                });
+                              }
                             },
                             tooltip: 'عرض البطاقات',
                           ),
@@ -179,9 +193,11 @@ class _ProductsListScreenUpdatedState extends State<ProductsListScreenUpdated> {
                                   : Colors.grey,
                             ),
                             onPressed: () {
-                              setState(() {
-                                _viewMode = ViewMode.table;
-                              });
+                              if (mounted) {
+                                setState(() {
+                                  _viewMode = ViewMode.table;
+                                });
+                              }
                             },
                             tooltip: 'عرض الجدول',
                           ),
@@ -237,9 +253,11 @@ class _ProductsListScreenUpdatedState extends State<ProductsListScreenUpdated> {
                           ),
                         ],
                         onChanged: (value) {
-                          setState(() {
-                            _selectedCategoryFilter = value;
-                          });
+                          if (mounted) {
+                            setState(() {
+                              _selectedCategoryFilter = value;
+                            });
+                          }
                         },
                       ),
                     ),
@@ -271,9 +289,11 @@ class _ProductsListScreenUpdatedState extends State<ProductsListScreenUpdated> {
                           ),
                         ],
                         onChanged: (value) {
-                          setState(() {
-                            _selectedWarehouseFilter = value;
-                          });
+                          if (mounted) {
+                            setState(() {
+                              _selectedWarehouseFilter = value;
+                            });
+                          }
                         },
                       ),
                     ),
@@ -305,9 +325,11 @@ class _ProductsListScreenUpdatedState extends State<ProductsListScreenUpdated> {
                           ),
                         ],
                         onChanged: (value) {
-                          setState(() {
-                            _selectedSupplierFilter = value;
-                          });
+                          if (mounted) {
+                            setState(() {
+                              _selectedSupplierFilter = value;
+                            });
+                          }
                         },
                       ),
                     ),
@@ -936,25 +958,38 @@ class _ProductsListScreenUpdatedState extends State<ProductsListScreenUpdated> {
     );
   }
 
-  void _navigateToAddProduct(BuildContext context) {
-    Navigator.push(
+  void _navigateToAddProduct(BuildContext context) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const AddProductScreenUpdated()),
-    ).then((_) {
-      _loadFilterOptions();
-    });
+    );
+
+    // إعادة تحميل الخيارات والمنتجات بعد الرجوع
+    if (mounted) {
+      await _loadFilterOptions();
+      // تحديث قائمة المنتجات من الـ provider
+      if (mounted) {
+        Provider.of<ProductProvider>(context, listen: false).products;
+      }
+    }
   }
 
-  void _navigateToEditProduct(BuildContext context, Product product) {
-    // التعديل يتطلب كلمة السر في شاشة التعديل نفسها
-    Navigator.push(
+  void _navigateToEditProduct(BuildContext context, Product product) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => AddProductScreenUpdated(product: product),
       ),
-    ).then((_) {
-      _loadFilterOptions();
-    });
+    );
+
+    // إعادة تحميل الخيارات والمنتجات بعد الرجوع
+    if (mounted) {
+      await _loadFilterOptions();
+      // تحديث قائمة المنتجات من الـ provider
+      if (mounted) {
+        Provider.of<ProductProvider>(context, listen: false).products;
+      }
+    }
   }
 
   void _confirmDelete(BuildContext context, Product product) async {
@@ -989,7 +1024,7 @@ class _ProductsListScreenUpdatedState extends State<ProductsListScreenUpdated> {
       ),
     );
 
-    if (wantToDelete != true) return;
+    if (wantToDelete != true || !mounted) return;
 
     // ثم نطلب كلمة السر
     final bool? confirmed = await showDialog<bool>(
@@ -1000,17 +1035,19 @@ class _ProductsListScreenUpdatedState extends State<ProductsListScreenUpdated> {
       ),
     );
 
-    if (confirmed == true) {
-      Provider.of<ProductProvider>(
+    if (confirmed == true && mounted) {
+      await Provider.of<ProductProvider>(
         context,
         listen: false,
       ).deleteProduct(product.id!);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حذف المنتج بنجاح')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم حذف المنتج بنجاح')),
+        );
 
-      _loadFilterOptions();
+        await _loadFilterOptions();
+      }
     }
   }
 }

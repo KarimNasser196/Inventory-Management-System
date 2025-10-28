@@ -7,20 +7,27 @@ import 'dart:convert';
 class PasswordService {
   static const String _passwordKey = 'app_password';
   static const String _maintenancePasswordKey = 'maintenance_password';
-  static const String _defaultPassword = '123456'; // كلمة السر الافتراضية للمخزون
-  static const String _defaultMaintenancePassword = '654321'; // كلمة السر الافتراضية للصيانة
+  static const String _defaultPassword =
+      '123456'; // كلمة السر الافتراضية للمخزون
+  static const String _defaultMaintenancePassword =
+      '654321'; // كلمة السر الافتراضية للصيانة
 
-  /// تشفير كلمة السر
+  /// تشفير كلمة السر (private)
   static String _hashPassword(String password) {
     final bytes = utf8.encode(password);
     final digest = sha256.convert(bytes);
     return digest.toString();
   }
 
+  /// تشفير كلمة السر (public) - للاستخدام في واجهة المستخدم
+  static String hashPassword(String password) {
+    return _hashPassword(password);
+  }
+
   /// تعيين كلمة السر لأول مرة
   static Future<void> initializePassword() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     // كلمة سر المخزون
     final hasPassword = prefs.containsKey(_passwordKey);
     if (!hasPassword) {
@@ -36,37 +43,32 @@ class PasswordService {
     }
   }
 
-  /// التحقق من كلمة السر مع دعم أنواع مختلفة
-  static Future<bool> verifyPassword(
-    String password, [
-    String type = 'warehouse',
-  ]) async {
+  /// التحقق من كلمة السر (المخزون)
+  static Future<bool> verifyPassword(String password) async {
     final prefs = await SharedPreferences.getInstance();
-
-    // تحديد المفتاح بناءً على النوع
-    final key = type == 'maintenance' ? _maintenancePasswordKey : _passwordKey;
-    final defaultPw =
-        type == 'maintenance' ? _defaultMaintenancePassword : _defaultPassword;
-
-    final storedHash = prefs.getString(key);
+    final storedHash = prefs.getString(_passwordKey);
 
     if (storedHash == null) {
       await initializePassword();
-      return password == defaultPw;
+      return password == _defaultPassword;
     }
 
     final inputHash = _hashPassword(password);
     return inputHash == storedHash;
   }
 
-  /// التحقق من كلمة سر المخزون (للتوافق مع الكود القديم)
-  static Future<bool> verifyWarehousePassword(String password) async {
-    return verifyPassword(password, 'warehouse');
-  }
-
   /// التحقق من كلمة سر الصيانة
   static Future<bool> verifyMaintenancePassword(String password) async {
-    return verifyPassword(password, 'maintenance');
+    final prefs = await SharedPreferences.getInstance();
+    final storedHash = prefs.getString(_maintenancePasswordKey);
+
+    if (storedHash == null) {
+      await initializePassword();
+      return password == _defaultMaintenancePassword;
+    }
+
+    final inputHash = _hashPassword(password);
+    return inputHash == storedHash;
   }
 
   /// تغيير كلمة السر (المخزون)
@@ -75,7 +77,7 @@ class PasswordService {
     String newPassword,
   ) async {
     // التحقق من كلمة السر القديمة
-    final isValid = await verifyPassword(oldPassword, 'warehouse');
+    final isValid = await verifyPassword(oldPassword);
     if (!isValid) {
       return false;
     }
@@ -94,7 +96,7 @@ class PasswordService {
     String newPassword,
   ) async {
     // التحقق من كلمة السر القديمة
-    final isValid = await verifyPassword(oldPassword, 'maintenance');
+    final isValid = await verifyMaintenancePassword(oldPassword);
     if (!isValid) {
       return false;
     }
@@ -109,7 +111,7 @@ class PasswordService {
 
   /// التحقق من كلمة سر للتعديل أو الحذف (تستخدم كلمة سر المخزون)
   static Future<bool> verifyOperationPassword(String password) async {
-    return await verifyPassword(password, 'warehouse');
+    return await verifyPassword(password);
   }
 
   /// إعادة تعيين كلمة السر إلى الافتراضية
