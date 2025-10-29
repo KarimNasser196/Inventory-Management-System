@@ -1,4 +1,4 @@
-// lib/providers/product_provider.dart (FIXED - No Build Phase Issues)
+// lib/providers/product_provider.dart (COMPLETE - مع جميع الدوال المطلوبة)
 
 import 'package:flutter/foundation.dart';
 import '../models/product.dart';
@@ -35,9 +35,9 @@ class ProductProvider with ChangeNotifier {
   int get totalQuantityInStock =>
       _products.fold<int>(0, (sum, p) => sum + p.quantity);
   double get totalInventoryValue => _products.fold<double>(
-    0,
-    (sum, p) => sum + (p.purchasePrice * p.quantity),
-  );
+        0,
+        (sum, p) => sum + (p.purchasePrice * p.quantity),
+      );
 
   ProductProvider() {
     _initializeData();
@@ -45,7 +45,6 @@ class ProductProvider with ChangeNotifier {
 
   /// FIX: Defer all initialization to avoid build phase issues
   void _initializeData() {
-    // Schedule initialization after the current frame
     Future.delayed(Duration.zero, () async {
       try {
         _isLoading = true;
@@ -220,7 +219,6 @@ class ProductProvider with ChangeNotifier {
     try {
       final dbHelper = DatabaseHelper.instance;
 
-      // Verify product exists in database
       final productData = await dbHelper.getProducts();
       final exists = productData.any((p) => p['id'] == product.id);
       if (!exists) {
@@ -394,59 +392,9 @@ class ProductProvider with ChangeNotifier {
     }
   }
 
-  Future<void> fetchSales() async {
-    try {
-      final dbHelper = DatabaseHelper.instance;
-      final salesData = await dbHelper.getSales();
-      _sales = salesData.map((data) => SaleTransaction.fromMap(data)).toList();
-      debugPrint('Fetched ${_sales.length} sales');
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error fetching sales: $e');
-      _sales = [];
-      _errorMessage = 'فشل في جلب المبيعات: $e';
-      notifyListeners();
-    }
-  }
-
-  Future<void> fetchInventoryTransactions() async {
-    try {
-      final dbHelper = DatabaseHelper.instance;
-      final txData = await dbHelper.getAllInventoryTransactions();
-      _inventoryTransactions = txData
-          .map((data) => InventoryTransaction.fromMap(data))
-          .toList();
-      debugPrint(
-        'Fetched ${_inventoryTransactions.length} inventory transactions',
-      );
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error fetching inventory transactions: $e');
-      _inventoryTransactions = [];
-      _errorMessage = 'فشل في جلب معاملات المخزون: $e';
-      notifyListeners();
-    }
-  }
-
-  List<SaleTransaction> getRecentSales({int limit = 5}) {
-    final sorted = List<SaleTransaction>.from(_sales)
-      ..sort((a, b) => b.saleDateTime.compareTo(a.saleDateTime));
-    return sorted.take(limit).toList();
-  }
-
-  double calculateTotalProfit() {
-    final totalProfit = _sales.fold<double>(
-      0,
-      (sum, sale) =>
-          sum + (sale.unitPrice - sale.purchasePrice) * sale.quantitySold,
-    );
-    debugPrint('Calculated total profit: $totalProfit');
-    return totalProfit;
-  }
-
-  Future<void> refreshProducts() async {
-    await fetchProducts();
-  }
+  // ═══════════════════════════════════════════════════════════════
+  // ⭐ دالة استرجاع منتج من عملية بيع (NEW)
+  // ═══════════════════════════════════════════════════════════════
 
   Future<void> returnSale(
     int saleId,
@@ -544,6 +492,152 @@ class ProductProvider with ChangeNotifier {
       _errorMessage = 'فشل في الاسترجاع: $e';
       notifyListeners();
       rethrow;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // ⭐ دالة حذف عملية بيع وإرجاع الكمية (NEW)
+  // ═══════════════════════════════════════════════════════════════
+
+  Future<void> deleteSale(int saleId) async {
+    try {
+      final dbHelper = DatabaseHelper.instance;
+
+      // الحصول على بيانات البيع
+      final sale = _sales.firstWhere(
+        (s) => s.id == saleId,
+        orElse: () => throw Exception('البيع غير موجود'),
+      );
+
+      // الحصول على المنتج وإرجاع الكمية
+      final product = _products.firstWhere(
+        (p) => p.id == sale.productId,
+        orElse: () => throw Exception('المنتج غير موجود'),
+      );
+
+      final updatedQuantity = product.quantity + sale.quantitySold;
+
+      // تحديث المنتج في قاعدة البيانات
+      final updateResult = await dbHelper.updateProductQuantity(
+        product.id!,
+        updatedQuantity,
+      );
+      if (updateResult == 0) {
+        throw Exception('فشل في تحديث كمية المنتج');
+      }
+
+      // تسجيل عملية الإرجاع في سجل المخزون
+      final inventoryTx = InventoryTransaction(
+        productId: product.id!,
+        productName: product.name,
+        transactionType: 'إلغاء بيع',
+        quantityChange: sale.quantitySold,
+        quantityAfter: updatedQuantity,
+        notes: 'إلغاء فاتورة رقم: ${_extractInvoiceNumber(sale.notes)}',
+        relatedSaleId: saleId.toString(),
+        dateTime: DateTime.now(),
+      );
+
+      final txId = await dbHelper.insertInventoryTransaction(
+        inventoryTx.toMap(),
+      );
+      if (txId == -1) throw Exception('فشل في تسجيل معاملة المخزون');
+
+      // حذف البيع من قاعدة البيانات
+      await dbHelper.deleteSale(saleId);
+
+      // تحديث القوائم المحلية
+      _sales.removeWhere((s) => s.id == saleId);
+      final index = _products.indexWhere((p) => p.id == product.id);
+      if (index != -1) {
+        _products[index] = product.copyWith(quantity: updatedQuantity);
+      }
+
+      _inventoryTransactions.add(inventoryTx.copyWith(id: txId));
+      _errorMessage = null;
+      notifyListeners();
+
+      debugPrint('✅ تم حذف البيع وإرجاع الكمية بنجاح');
+    } catch (e) {
+      debugPrint('❌ خطأ في حذف البيع: $e');
+      _errorMessage = 'فشل في حذف البيع: $e';
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // دالة مساعدة: استخراج رقم الفاتورة
+  // ═══════════════════════════════════════════════════════════════
+
+  String _extractInvoiceNumber(String? notes) {
+    if (notes == null || notes.isEmpty) return 'غير محدد';
+    final match = RegExp(r'فاتورة:\s*(.+?)(?:\||$)').firstMatch(notes);
+    return match?.group(1)?.trim() ?? 'غير محدد';
+  }
+
+  Future<void> fetchSales() async {
+    try {
+      final dbHelper = DatabaseHelper.instance;
+      final salesData = await dbHelper.getSales();
+      _sales = salesData.map((data) => SaleTransaction.fromMap(data)).toList();
+      debugPrint('Fetched ${_sales.length} sales');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error fetching sales: $e');
+      _sales = [];
+      _errorMessage = 'فشل في جلب المبيعات: $e';
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchInventoryTransactions() async {
+    try {
+      final dbHelper = DatabaseHelper.instance;
+      final txData = await dbHelper.getAllInventoryTransactions();
+      _inventoryTransactions =
+          txData.map((data) => InventoryTransaction.fromMap(data)).toList();
+      debugPrint(
+        'Fetched ${_inventoryTransactions.length} inventory transactions',
+      );
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error fetching inventory transactions: $e');
+      _inventoryTransactions = [];
+      _errorMessage = 'فشل في جلب معاملات المخزون: $e';
+      notifyListeners();
+    }
+  }
+
+  List<SaleTransaction> getRecentSales({int limit = 5}) {
+    final sorted = List<SaleTransaction>.from(_sales)
+      ..sort((a, b) => b.saleDateTime.compareTo(a.saleDateTime));
+    return sorted.take(limit).toList();
+  }
+
+  double calculateTotalProfit() {
+    final totalProfit = _sales.fold<double>(
+      0,
+      (sum, sale) =>
+          sum + (sale.unitPrice - sale.purchasePrice) * sale.quantitySold,
+    );
+    debugPrint('Calculated total profit: $totalProfit');
+    return totalProfit;
+  }
+
+  Future<void> refreshProducts() async {
+    await fetchProducts();
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // دالة تحديث سجل المخزون (Helper)
+  // ═══════════════════════════════════════════════════════════════
+
+  Future<void> refreshInventoryTransactions() async {
+    try {
+      await fetchInventoryTransactions();
+    } catch (e) {
+      debugPrint('❌ خطأ في تحديث سجل المخزون: $e');
     }
   }
 }

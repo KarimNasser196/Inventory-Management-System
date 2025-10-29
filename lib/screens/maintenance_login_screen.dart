@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:soundtry/screens/maintenance_screen.dart';
+import 'package:soundtry/screens/system_selection_screen.dart';
 import 'package:soundtry/services/password_service.dart';
 
 class MaintenanceLoginScreen extends StatefulWidget {
@@ -34,7 +35,7 @@ class _MaintenanceLoginScreenState extends State<MaintenanceLoginScreen> {
     try {
       // استخدام كلمة سر منفصلة للصيانة
       final isValid = await PasswordService.verifyMaintenancePassword(password);
-      
+
       if (isValid) {
         if (mounted) {
           Navigator.pushReplacement(
@@ -162,7 +163,11 @@ class _MaintenanceLoginScreenState extends State<MaintenanceLoginScreen> {
                   ),
                   const SizedBox(height: 16),
                   TextButton.icon(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) =>
+                                const SystemSelectionScreen())),
                     icon: const Icon(Icons.arrow_back),
                     label: const Text('العودة'),
                   ),

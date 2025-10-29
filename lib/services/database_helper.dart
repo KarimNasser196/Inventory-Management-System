@@ -1,3 +1,5 @@
+// lib/services/database_helper.dart (COMPLETE & FIXED)
+
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
@@ -28,7 +30,7 @@ class DatabaseHelper {
         return await databaseFactory.openDatabase(
           path,
           options: OpenDatabaseOptions(
-            version: 9, // تحديث إلى النسخة 9
+            version: 9,
             onCreate: _createDB,
             onUpgrade: _upgradeDB,
           ),
@@ -98,7 +100,7 @@ CREATE TABLE sales (
       await db.execute('CREATE INDEX idx_saleDateTime ON sales(saleDateTime)');
       debugPrint('Created sales table');
 
-      // جدول حركة المخزون
+      // ⭐ جدول حركة المخزون (FIXED - بدون quantityBefore)
       await db.execute('''
 CREATE TABLE inventory_transactions (
   id $idType,
@@ -118,6 +120,9 @@ CREATE TABLE inventory_transactions (
       );
       await db.execute(
         'CREATE INDEX idx_dateTime_inventory ON inventory_transactions(dateTime)',
+      );
+      await db.execute(
+        'CREATE INDEX idx_relatedSaleId ON inventory_transactions(relatedSaleId)',
       );
       debugPrint('Created inventory_transactions table');
 
@@ -204,7 +209,7 @@ CREATE TABLE warehouses (
       debugPrint('Error backing up database: $e');
     }
 
-    // الترقيات القديمة
+    // الترقيات القديمة (1-8)
     if (oldVersion < 3) {
       try {
         await db.execute('''
@@ -286,7 +291,7 @@ FROM products_old
         await db.execute(
           'CREATE INDEX idx_supplierName ON products(supplierName)',
         );
-        debugPrint('Migrated products table to make model nullable');
+        debugPrint('Migrated products table');
       } catch (e) {
         debugPrint('Error migrating products table: $e');
       }
@@ -303,7 +308,6 @@ FROM products_old
       }
     }
 
-    // إضافة جدول الصيانة (نسخة معقدة)
     if (oldVersion < 6) {
       try {
         await db.execute('''
@@ -339,22 +343,19 @@ CREATE TABLE maintenance_records (
         await db.execute(
           'CREATE INDEX idx_receivedDate ON maintenance_records(receivedDate)',
         );
-        debugPrint('Created maintenance_records table (old version)');
+        debugPrint('Created maintenance_records table');
       } catch (e) {
         debugPrint('Error creating maintenance_records table: $e');
       }
     }
 
-    // تبسيط جدول الصيانة
     if (oldVersion < 7) {
       try {
-        // التحقق من وجود الجدول القديم
         final tables = await db.rawQuery(
           "SELECT name FROM sqlite_master WHERE type='table' AND name='maintenance_records'",
         );
 
         if (tables.isNotEmpty) {
-          // إنشاء جدول مؤقت بالهيكل الجديد المبسط
           await db.execute('''
 CREATE TABLE maintenance_records_new (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -370,7 +371,6 @@ CREATE TABLE maintenance_records_new (
 )
 ''');
 
-          // نقل البيانات القديمة إلى الجدول الجديد
           await db.execute('''
 INSERT INTO maintenance_records_new 
   (id, deviceType, customerName, problemDescription, status, cost, paidAmount, receivedDate, deliveryDate, repairCode)
@@ -391,15 +391,11 @@ SELECT
 FROM maintenance_records
 ''');
 
-          // حذف الجدول القديم
           await db.execute('DROP TABLE maintenance_records');
-
-          // إعادة تسمية الجدول الجديد
           await db.execute(
             'ALTER TABLE maintenance_records_new RENAME TO maintenance_records',
           );
 
-          // إنشاء الفهارس
           await db.execute(
             'CREATE INDEX idx_customerName ON maintenance_records(customerName)',
           );
@@ -414,86 +410,19 @@ FROM maintenance_records
           );
 
           debugPrint('Successfully simplified maintenance_records table');
-        } else {
-          // إذا لم يكن الجدول موجوداً، أنشئ الجدول المبسط مباشرة
-          await db.execute('''
-CREATE TABLE maintenance_records (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  deviceType TEXT NOT NULL,
-  customerName TEXT NOT NULL,
-  problemDescription TEXT NOT NULL,
-  status TEXT NOT NULL,
-  cost REAL NOT NULL,
-  paidAmount REAL NOT NULL,
-  receivedDate TEXT NOT NULL,
-  deliveryDate TEXT,
-  repairCode TEXT NOT NULL
-)
-''');
-          await db.execute(
-            'CREATE INDEX idx_customerName ON maintenance_records(customerName)',
-          );
-          await db.execute(
-            'CREATE INDEX idx_status ON maintenance_records(status)',
-          );
-          await db.execute(
-            'CREATE INDEX idx_receivedDate ON maintenance_records(receivedDate)',
-          );
-          await db.execute(
-            'CREATE INDEX idx_repairCode ON maintenance_records(repairCode)',
-          );
-          debugPrint('Created new simplified maintenance_records table');
         }
       } catch (e) {
         debugPrint('Error simplifying maintenance_records table: $e');
-        // في حالة الفشل، حاول إنشاء جدول جديد
-        try {
-          await db.execute('DROP TABLE IF EXISTS maintenance_records');
-          await db.execute('''
-CREATE TABLE maintenance_records (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  deviceType TEXT NOT NULL,
-  customerName TEXT NOT NULL,
-  problemDescription TEXT NOT NULL,
-  status TEXT NOT NULL,
-  cost REAL NOT NULL,
-  paidAmount REAL NOT NULL,
-  receivedDate TEXT NOT NULL,
-  deliveryDate TEXT,
-  repairCode TEXT NOT NULL
-)
-''');
-          await db.execute(
-            'CREATE INDEX idx_customerName ON maintenance_records(customerName)',
-          );
-          await db.execute(
-            'CREATE INDEX idx_status ON maintenance_records(status)',
-          );
-          await db.execute(
-            'CREATE INDEX idx_receivedDate ON maintenance_records(receivedDate)',
-          );
-          await db.execute(
-            'CREATE INDEX idx_repairCode ON maintenance_records(repairCode)',
-          );
-          debugPrint(
-            'Created fresh simplified maintenance_records table after error',
-          );
-        } catch (e2) {
-          debugPrint('Fatal error creating maintenance_records table: $e2');
-        }
       }
     }
 
-    // إضافة حقول deliveryDate و repairCode للجداول الموجودة
     if (oldVersion < 8) {
       try {
-        // التحقق من وجود الأعمدة
         final tableInfo = await db.rawQuery(
           'PRAGMA table_info(maintenance_records)',
         );
-        final columnNames = tableInfo
-            .map((col) => col['name'] as String)
-            .toList();
+        final columnNames =
+            tableInfo.map((col) => col['name'] as String).toList();
 
         if (!columnNames.contains('deliveryDate')) {
           await db.execute(
@@ -507,7 +436,6 @@ CREATE TABLE maintenance_records (
             'ALTER TABLE maintenance_records ADD COLUMN repairCode TEXT NOT NULL DEFAULT "000000"',
           );
 
-          // تحديث السجلات الموجودة بأكواد عشوائية
           await db.execute('''
             UPDATE maintenance_records 
             SET repairCode = printf('%06d', abs(random() % 900000 + 100000))
@@ -524,10 +452,10 @@ CREATE TABLE maintenance_records (
       }
     }
 
-    // إضافة جداول الأصناف والموردين والمخازن
+    // ⭐ النسخة 9: إضافة جداول جديدة وإزالة quantityBefore
     if (oldVersion < 9) {
       try {
-        // جدول الأصناف
+        // إضافة جدول الأصناف
         await db.execute('''
 CREATE TABLE IF NOT EXISTS categories (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -537,7 +465,7 @@ CREATE TABLE IF NOT EXISTS categories (
 ''');
         debugPrint('Created categories table');
 
-        // جدول الموردين
+        // إضافة جدول الموردين
         await db.execute('''
 CREATE TABLE IF NOT EXISTS suppliers (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -548,7 +476,7 @@ CREATE TABLE IF NOT EXISTS suppliers (
 ''');
         debugPrint('Created suppliers table');
 
-        // جدول المخازن
+        // إضافة جدول المخازن
         await db.execute('''
 CREATE TABLE IF NOT EXISTS warehouses (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -558,8 +486,60 @@ CREATE TABLE IF NOT EXISTS warehouses (
 )
 ''');
         debugPrint('Created warehouses table');
+
+        // ⭐ FIX: إعادة بناء جدول inventory_transactions بدون quantityBefore
+        final inventoryData = await db.query('inventory_transactions');
+
+        if (inventoryData.isNotEmpty) {
+          // إنشاء جدول جديد بدون quantityBefore
+          await db.execute('''
+CREATE TABLE inventory_transactions_new (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  productId INTEGER NOT NULL,
+  productName TEXT NOT NULL,
+  transactionType TEXT NOT NULL,
+  quantityChange INTEGER NOT NULL,
+  quantityAfter INTEGER NOT NULL,
+  dateTime TEXT NOT NULL,
+  relatedSaleId TEXT,
+  notes TEXT,
+  FOREIGN KEY (productId) REFERENCES products (id) ON DELETE CASCADE
+)
+''');
+
+          // نقل البيانات (بدون quantityBefore)
+          await db.execute('''
+INSERT INTO inventory_transactions_new 
+  (id, productId, productName, transactionType, quantityChange, quantityAfter, dateTime, relatedSaleId, notes)
+SELECT 
+  id, productId, productName, transactionType, quantityChange, quantityAfter, dateTime, relatedSaleId, notes
+FROM inventory_transactions
+''');
+
+          // حذف الجدول القديم
+          await db.execute('DROP TABLE inventory_transactions');
+
+          // إعادة تسمية الجدول الجديد
+          await db.execute(
+            'ALTER TABLE inventory_transactions_new RENAME TO inventory_transactions',
+          );
+
+          // إعادة إنشاء الفهارس
+          await db.execute(
+            'CREATE INDEX idx_productId_inventory ON inventory_transactions(productId)',
+          );
+          await db.execute(
+            'CREATE INDEX idx_dateTime_inventory ON inventory_transactions(dateTime)',
+          );
+          await db.execute(
+            'CREATE INDEX idx_relatedSaleId ON inventory_transactions(relatedSaleId)',
+          );
+
+          debugPrint(
+              '✅ Successfully removed quantityBefore from inventory_transactions');
+        }
       } catch (e) {
-        debugPrint('Error creating categories/suppliers/warehouses tables: $e');
+        debugPrint('Error in version 9 upgrade: $e');
       }
     }
   }
@@ -707,7 +687,7 @@ CREATE TABLE IF NOT EXISTS warehouses (
     }
   }
 
-  // ========== دوال حركة المخزون ==========
+  // ========== دوال حركة المخزون (FIXED) ==========
 
   Future<int> insertInventoryTransaction(
     Map<String, dynamic> transaction,
@@ -742,7 +722,7 @@ CREATE TABLE IF NOT EXISTS warehouses (
     }
   }
 
-  // ========== دوال الصيانة (مبسطة) ==========
+  // ========== دوال الصيانة ==========
 
   Future<List<Map<String, dynamic>>> getMaintenanceRecords() async {
     final db = await database;

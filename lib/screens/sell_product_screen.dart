@@ -1,4 +1,4 @@
-// lib/screens/sell_product_screen.dart (UPDATED - Fixed dimensions and profit hiding)
+// lib/screens/sell_product_screen.dart (UPDATED - Fixed Return & Invoice Management)
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -44,6 +44,8 @@ class _SellProductScreenState extends State<SellProductScreen>
 
   List<CartItem> _cart = [];
   bool _isSelling = false;
+  final _invoiceSearchController = TextEditingController();
+  String _invoiceSearchQuery = '';
 
   @override
   void initState() {
@@ -71,6 +73,7 @@ class _SellProductScreenState extends State<SellProductScreen>
     _customerNameController.dispose();
     _notesController.dispose();
     _tabController.dispose();
+    _invoiceSearchController.dispose();
     super.dispose();
   }
 
@@ -289,59 +292,15 @@ class _SellProductScreenState extends State<SellProductScreen>
                                       ),
                                     ),
                                     DataCell(
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          if (isPriceVisible)
-                                            Container(
-                                              padding: const EdgeInsets.all(8),
-                                              constraints: const BoxConstraints(
-                                                  maxWidth: 150),
-                                              decoration: BoxDecoration(
-                                                color: Colors.blue[50],
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Text(
-                                                      'فردي: ${product.retailPrice.toStringAsFixed(2)}',
-                                                      style: const TextStyle(
-                                                          fontSize: 11)),
-                                                  Text(
-                                                      'جملة: ${product.wholesalePrice.toStringAsFixed(2)}',
-                                                      style: const TextStyle(
-                                                          fontSize: 11)),
-                                                  Text(
-                                                      'ج.ج: ${product.bulkWholesalePrice.toStringAsFixed(2)}',
-                                                      style: const TextStyle(
-                                                          fontSize: 11)),
-                                                ],
-                                              ),
-                                            ),
-                                          IconButton(
-                                            icon: Icon(
-                                                isPriceVisible
-                                                    ? Icons.visibility_off
-                                                    : Icons.visibility,
-                                                color: Colors.blue,
-                                                size: 20),
-                                            onPressed: () {
-                                              setState(() {
-                                                if (isPriceVisible) {
-                                                  _visiblePricesProducts
-                                                      .remove(product.id);
-                                                } else {
-                                                  _visiblePricesProducts
-                                                      .add(product.id!);
-                                                }
-                                              });
-                                            },
-                                          ),
-                                        ],
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.visibility,
+                                          color: Colors.blue,
+                                          size: 20,
+                                        ),
+                                        tooltip: 'عرض الأسعار',
+                                        onPressed: () =>
+                                            _showPricesDialogInTable(product),
                                       ),
                                     ),
                                     DataCell(
@@ -381,11 +340,130 @@ class _SellProductScreenState extends State<SellProductScreen>
     );
   }
 
+  void _showPricesDialogInTable(Product product) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.price_check, color: Colors.blue[700], size: 28),
+            const SizedBox(width: 15),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.name,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'المتاح: ${product.quantity}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: product.quantity > 0 ? Colors.green : Colors.red,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildPriceCard(
+              icon: Icons.person,
+              title: ' فردي',
+              price: product.retailPrice,
+              color: Colors.blue,
+            ),
+            const SizedBox(height: 12),
+            _buildPriceCard(
+              icon: Icons.group,
+              title: ' جملة',
+              price: product.wholesalePrice,
+              color: Colors.orange,
+            ),
+            const SizedBox(height: 12),
+            _buildPriceCard(
+              icon: Icons.groups,
+              title: ' جملة الجملة',
+              price: product.bulkWholesalePrice,
+              color: Colors.green,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إغلاق'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPriceCard({
+    required IconData icon,
+    required String title,
+    required double price,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3), width: 2),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 28),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+                const SizedBox(height: 4),
+              ],
+            ),
+          ),
+          Text(
+            '  ${price.toStringAsFixed(2)} جنيه',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMobileSellView(
       ProductProvider provider, List<Product> filteredProducts) {
     return Column(
       children: [
-        // Search and filter
         Container(
           padding: const EdgeInsets.all(12),
           color: Colors.grey[50],
@@ -428,8 +506,6 @@ class _SellProductScreenState extends State<SellProductScreen>
             ],
           ),
         ),
-
-        // Products list
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.all(12),
@@ -493,8 +569,6 @@ class _SellProductScreenState extends State<SellProductScreen>
             },
           ),
         ),
-
-        // Cart summary (mobile)
         if (_cart.isNotEmpty)
           Container(
             padding: const EdgeInsets.all(12),
@@ -1257,7 +1331,7 @@ class _SellProductScreenState extends State<SellProductScreen>
           );
         }
 
-        // تجميع المبيعات حسب رقم الفاتورة
+        // تجميع الفواتير
         final Map<String, List<dynamic>> groupedSales = {};
         for (var sale in provider.sales) {
           final invoiceNumber = _extractInvoiceNumber(sale.notes);
@@ -1267,237 +1341,736 @@ class _SellProductScreenState extends State<SellProductScreen>
           groupedSales[invoiceNumber]!.add(sale);
         }
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'الفواتير (${groupedSales.length})',
-                style:
-                    const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              ...groupedSales.entries.map((entry) {
-                final invoiceNumber = entry.key;
-                final sales = entry.value;
-                final firstSale = sales.first;
-                final totalAmount =
-                    sales.fold<double>(0, (sum, s) => sum + s.totalAmount);
-                final totalQuantity = sales.fold<int>(
-                    0, (sum, s) => sum + (s.quantitySold as int));
+        // تطبيق البحث
+        final filteredInvoices = groupedSales.entries.where((entry) {
+          if (_invoiceSearchQuery.isEmpty) return true;
 
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  elevation: 3,
-                  child: ExpansionTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.green[50],
-                        borderRadius: BorderRadius.circular(8),
+          final query = _invoiceSearchQuery.toLowerCase();
+          final invoiceNumber = entry.key.toLowerCase();
+          final sales = entry.value;
+          final customerName = sales.first.customerName.toLowerCase();
+
+          // البحث في رقم الفاتورة
+          if (invoiceNumber.contains(query)) return true;
+
+          // البحث في اسم العميل
+          if (customerName.contains(query)) return true;
+
+          // البحث في أسماء المنتجات
+          for (var sale in sales) {
+            if (sale.productName.toLowerCase().contains(query)) {
+              return true;
+            }
+          }
+
+          return false;
+        }).toList();
+
+        return Column(
+          children: [
+            // حقل البحث
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey[300]!),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _invoiceSearchController,
+                      decoration: InputDecoration(
+                        hintText:
+                            'ابحث برقم الفاتورة، اسم العميل، أو المنتج...',
+                        prefixIcon:
+                            const Icon(Icons.search, color: Colors.green),
+                        suffixIcon: _invoiceSearchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  setState(() {
+                                    _invoiceSearchController.clear();
+                                    _invoiceSearchQuery = '';
+                                  });
+                                },
+                              )
+                            : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.green),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              const BorderSide(color: Colors.green, width: 2),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                       ),
-                      child: Icon(Icons.receipt, color: Colors.green[700]),
+                      onChanged: (value) {
+                        setState(() {
+                          _invoiceSearchQuery = value;
+                        });
+                      },
                     ),
-                    title: Text(
-                      'فاتورة $invoiceNumber',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ],
+              ),
+            ),
+
+            // عداد النتائج
+            if (_invoiceSearchQuery.isNotEmpty)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                color: Colors.green[50],
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline,
+                        size: 16, color: Colors.green[700]),
+                    const SizedBox(width: 8),
+                    Text(
+                      'النتائج: ${filteredInvoices.length} من ${groupedSales.length} فاتورة',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.green[700],
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 4),
-                        Text('العميل: ${firstSale.customerName}',
-                            style: const TextStyle(fontSize: 14)),
-                        Text(
-                          'التاريخ: ${DateFormat('yyyy-MM-dd HH:mm').format(firstSale.saleDateTime)}',
-                          style:
-                              TextStyle(fontSize: 12, color: Colors.grey[600]),
-                        ),
-                      ],
-                    ),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '${totalAmount.toStringAsFixed(2)} جنيه',
-                          style: const TextStyle(
+                  ],
+                ),
+              ),
+
+            // قائمة الفواتير
+            Expanded(
+              child: filteredInvoices.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.search_off,
+                              size: 64, color: Colors.grey[400]),
+                          const SizedBox(height: 16),
+                          Text(
+                            'لا توجد نتائج للبحث',
+                            style: TextStyle(
+                                fontSize: 18, color: Colors.grey[600]),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'جرب البحث بكلمات مختلفة',
+                            style: TextStyle(
+                                fontSize: 14, color: Colors.grey[500]),
+                          ),
+                        ],
+                      ),
+                    )
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _invoiceSearchQuery.isEmpty
+                                ? 'الفواتير (${groupedSales.length})'
+                                : 'نتائج البحث (${filteredInvoices.length})',
+                            style: const TextStyle(
+                              fontSize: 24,
                               fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: Colors.green),
-                        ),
-                      ],
-                    ),
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'تفاصيل الفاتورة:',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 16),
                             ),
-                            const SizedBox(height: 12),
-                            ...sales.map((sale) {
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[50],
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.grey[300]!),
+                          ),
+                          const SizedBox(height: 16),
+                          ...filteredInvoices.map((entry) {
+                            final invoiceNumber = entry.key;
+                            final sales = entry.value;
+                            final firstSale = sales.first;
+                            final totalAmount = sales.fold<double>(
+                                0, (sum, s) => sum + s.totalAmount);
+                            final totalQuantity = sales.fold<int>(
+                                0, (sum, s) => sum + (s.quantitySold as int));
+
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 16),
+                              elevation: 3,
+                              child: ExpansionTile(
+                                leading: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green[50],
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(Icons.receipt,
+                                      color: Colors.green[700]),
                                 ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            sale.productName,
-                                            style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 14),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            'الكمية: ${sale.quantitySold} × ${sale.unitPrice.toStringAsFixed(2)} جنيه',
-                                            style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey[700]),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.end,
-                                      children: [
-                                        Text(
-                                          '${sale.totalAmount.toStringAsFixed(2)} جنيه',
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                              color: Colors.green),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                title: Text(
+                                  'فاتورة $invoiceNumber',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16),
                                 ),
-                              );
-                            }).toList(),
-                            const Divider(thickness: 2),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text('المجموع:',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16)),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
+                                    const SizedBox(height: 4),
+                                    Text('العميل: ${firstSale.customerName}',
+                                        style: const TextStyle(fontSize: 14)),
                                     Text(
-                                      '${totalAmount.toStringAsFixed(2)} جنيه',
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 18,
-                                          color: Colors.green),
-                                    ),
-                                    Text(
-                                      'إجمالي القطع: $totalQuantity',
+                                      'التاريخ: ${DateFormat('yyyy-MM-dd HH:mm').format(firstSale.saleDateTime)}',
                                       style: TextStyle(
                                           fontSize: 12,
                                           color: Colors.grey[600]),
                                     ),
                                   ],
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                OutlinedButton.icon(
-                                  onPressed: () => _showReturnDialog(sales),
-                                  icon: const Icon(Icons.assignment_return,
-                                      color: Colors.orange),
-                                  label: const Text('استرجاع'),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: Colors.orange,
+                                trailing: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      '${totalAmount.toStringAsFixed(2)} جنيه',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                          color: Colors.green),
+                                    ),
+                                  ],
+                                ),
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'تفاصيل الفاتورة:',
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        ...sales.map((sale) {
+                                          return Container(
+                                            margin: const EdgeInsets.only(
+                                                bottom: 8),
+                                            padding: const EdgeInsets.all(12),
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey[50],
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              border: Border.all(
+                                                  color: Colors.grey[300]!),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        sale.productName,
+                                                        style: const TextStyle(
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                            fontSize: 14),
+                                                      ),
+                                                      const SizedBox(height: 4),
+                                                      Text(
+                                                        'الكمية: ${sale.quantitySold} × ${sale.unitPrice.toStringAsFixed(2)} جنيه',
+                                                        style: TextStyle(
+                                                            fontSize: 12,
+                                                            color: Colors
+                                                                .grey[700]),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.end,
+                                                  children: [
+                                                    Text(
+                                                      '${sale.totalAmount.toStringAsFixed(2)} جنيه',
+                                                      style: const TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          fontSize: 14,
+                                                          color: Colors.green),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        }).toList(),
+                                        const Divider(thickness: 2),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            const Text('المجموع:',
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 16)),
+                                            Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.end,
+                                              children: [
+                                                Text(
+                                                  '${totalAmount.toStringAsFixed(2)} جنيه',
+                                                  style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 18,
+                                                      color: Colors.green),
+                                                ),
+                                                Text(
+                                                  'إجمالي القطع: $totalQuantity',
+                                                  style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: Colors.grey[600]),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.end,
+                                          children: [
+                                            OutlinedButton.icon(
+                                              onPressed: () =>
+                                                  _showReturnDialogNew(
+                                                      sales, provider),
+                                              icon: const Icon(
+                                                  Icons.assignment_return,
+                                                  color: Colors.orange),
+                                              label: const Text('استرجاع'),
+                                              style: OutlinedButton.styleFrom(
+                                                foregroundColor: Colors.orange,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            OutlinedButton.icon(
+                                              onPressed: () =>
+                                                  _showManageInvoiceDialog(
+                                                      invoiceNumber,
+                                                      sales,
+                                                      provider),
+                                              icon: const Icon(Icons.edit,
+                                                  color: Colors.blue),
+                                              label: const Text('إدارة'),
+                                              style: OutlinedButton.styleFrom(
+                                                foregroundColor: Colors.blue,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            ElevatedButton.icon(
+                                              onPressed: () =>
+                                                  _showInvoiceForGroup(sales),
+                                              icon: const Icon(Icons.receipt),
+                                              label: const Text('عرض الفاتورة'),
+                                              style: ElevatedButton.styleFrom(
+                                                  backgroundColor:
+                                                      Colors.green),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                ElevatedButton.icon(
-                                  onPressed: () => _showInvoiceForGroup(sales),
-                                  icon: const Icon(Icons.receipt),
-                                  label: const Text('عرض الفاتورة'),
-                                  style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.blue),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ],
                       ),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ],
-          ),
+                    ),
+            ),
+          ],
         );
       },
     );
-  }
+  } // دالة استرجاع محسّنة
 
-  void _showReturnDialog(List<dynamic> sales) {
+  void _showReturnDialogNew(List<dynamic> sales, ProductProvider provider) {
+    final Map<int, TextEditingController> quantityControllers = {};
+    final Map<int, TextEditingController> reasonControllers = {};
+
+    for (var sale in sales) {
+      quantityControllers[sale.id] = TextEditingController(text: '0');
+      reasonControllers[sale.id] = TextEditingController();
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('استرجاع من الفاتورة',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange[200]!),
+                  ),
+                  child: const Text(
+                    'اختر المنتجات والكمية المراد استرجاعها',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ...sales.map((sale) {
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    elevation: 2,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(sale.productName,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 15)),
+                          const SizedBox(height: 4),
+                          Text('الكمية المباعة: ${sale.quantitySold}',
+                              style: TextStyle(
+                                  color: Colors.grey[700], fontSize: 13)),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: quantityControllers[sale.id],
+                            decoration: InputDecoration(
+                              labelText: 'كمية الاسترجاع *',
+                              hintText: 'الحد الأقصى: ${sale.quantitySold}',
+                              border: const OutlineInputBorder(),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 10),
+                            ),
+                            keyboardType: TextInputType.number,
+                            onChanged: (value) {
+                              final qty = int.tryParse(value) ?? 0;
+                              if (qty > sale.quantitySold) {
+                                quantityControllers[sale.id]!.text =
+                                    sale.quantitySold.toString();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                        'الحد الأقصى: ${sale.quantitySold}'),
+                                    backgroundColor: Colors.orange,
+                                    duration: const Duration(seconds: 1),
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: reasonControllers[sale.id],
+                            decoration: const InputDecoration(
+                              labelText: 'سبب الاسترجاع *',
+                              hintText: 'اكتب السبب هنا...',
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 10),
+                            ),
+                            maxLines: 2,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                bool hasReturns = false;
+                bool hasErrors = false;
+
+                for (var sale in sales) {
+                  final quantity =
+                      int.tryParse(quantityControllers[sale.id]!.text) ?? 0;
+                  final reason = reasonControllers[sale.id]!.text.trim();
+
+                  if (quantity > 0) {
+                    // التحقق من السبب
+                    if (reason.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                              'يرجى كتابة سبب الاسترجاع لـ ${sale.productName}'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      hasErrors = true;
+                      continue;
+                    }
+
+                    // التحقق من الكمية
+                    if (quantity > sale.quantitySold) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                              'كمية ${sale.productName} أكبر من المباعة (${sale.quantitySold})'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      hasErrors = true;
+                      continue;
+                    }
+
+                    hasReturns = true;
+                    try {
+                      await provider.returnSale(sale.id, quantity, reason);
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content:
+                              Text('خطأ في استرجاع ${sale.productName}: $e'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      hasErrors = true;
+                    }
+                  }
+                }
+
+                if (!hasErrors) {
+                  Navigator.pop(context);
+                }
+
+                if (hasReturns && !hasErrors) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('تم استرجاع المنتجات بنجاح'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                  setState(() {});
+                } else if (!hasReturns && !hasErrors) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('لم يتم تحديد أي منتجات للاسترجاع'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
+              child: const Text('تأكيد الاسترجاع'),
+            ),
+          ],
+        ),
+      ),
+    );
+  } // دالة إدارة الفاتورة
+
+  void _showManageInvoiceDialog(
+      String invoiceNumber, List<dynamic> sales, ProductProvider provider) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('استرجاع من الفاتورة'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('اختر المنتجات المراد استرجاعها:'),
-              const SizedBox(height: 16),
-              ...sales.map((sale) {
-                final quantityController = TextEditingController(text: '0');
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(sale.productName,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.bold)),
-                        Text('الكمية المباعة: ${sale.quantitySold}'),
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: quantityController,
-                          decoration: const InputDecoration(
-                            labelText: 'كمية الاسترجاع',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
-                          ),
-                          keyboardType: TextInputType.number,
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ],
+        title: Text('إدارة فاتورة $invoiceNumber'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.add_circle, color: Colors.green),
+              title: const Text('إضافة منتج للفاتورة'),
+              onTap: () {
+                Navigator.pop(context);
+                _showAddProductToInvoiceDialog(invoiceNumber, sales, provider);
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.delete_forever, color: Colors.red),
+              title: const Text('حذف الفاتورة بالكامل'),
+              onTap: () {
+                Navigator.pop(context);
+                _confirmDeleteInvoice(invoiceNumber, sales, provider);
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إغلاق'),
           ),
+        ],
+      ),
+    );
+  }
+
+  // إضافة منتج للفاتورة
+  void _showAddProductToInvoiceDialog(
+      String invoiceNumber, List<dynamic> sales, ProductProvider provider) {
+    Product? selectedProduct;
+    final quantityController = TextEditingController(text: '1');
+    final priceController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('إضافة منتج للفاتورة'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<Product>(
+                  value: selectedProduct,
+                  decoration: const InputDecoration(
+                    labelText: 'اختر المنتج',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: provider.products
+                      .where((p) => p.quantity > 0)
+                      .map((product) => DropdownMenuItem(
+                            value: product,
+                            child: Text(product.name),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    setDialogState(() {
+                      selectedProduct = value;
+                      priceController.text =
+                          value?.retailPrice.toStringAsFixed(2) ?? '';
+                    });
+                  },
+                ),
+                if (selectedProduct != null) ...[
+                  const SizedBox(height: 12),
+                  Text('المتاح: ${selectedProduct!.quantity}'),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: quantityController,
+                    decoration: const InputDecoration(
+                      labelText: 'الكمية',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: priceController,
+                    decoration: const InputDecoration(
+                      labelText: 'السعر',
+                      border: OutlineInputBorder(),
+                      suffixText: 'جنيه',
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              onPressed: selectedProduct == null
+                  ? null
+                  : () async {
+                      final quantity =
+                          int.tryParse(quantityController.text) ?? 1;
+                      final price = double.tryParse(priceController.text) ??
+                          selectedProduct!.retailPrice;
+
+                      if (quantity > selectedProduct!.quantity) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('الكمية المطلوبة أكثر من المتاح')),
+                        );
+                        return;
+                      }
+
+                      try {
+                        // استخدام نفس اسم العميل والملاحظات من الفاتورة الأصلية
+                        final customerName = sales.first.customerName;
+                        final notes = 'فاتورة: $invoiceNumber';
+
+                        await provider.sellProductWithCustomPrice(
+                          selectedProduct!,
+                          quantity,
+                          customerName,
+                          price,
+                          notes,
+                        );
+
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('تمت إضافة المنتج للفاتورة بنجاح'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                        setState(() {});
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('خطأ: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              child: const Text('إضافة'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // حذف الفاتورة بالكامل
+  void _confirmDeleteInvoice(
+      String invoiceNumber, List<dynamic> sales, ProductProvider provider) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('تأكيد الحذف'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('هل أنت متأكد من حذف هذه الفاتورة بالكامل؟'),
+            const SizedBox(height: 8),
+            Text('فاتورة: $invoiceNumber',
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text('سيتم حذف جميع المنتجات المرتبطة بهذه الفاتورة.',
+                style: TextStyle(color: Colors.red)),
+          ],
         ),
         actions: [
           TextButton(
@@ -1506,23 +2079,32 @@ class _SellProductScreenState extends State<SellProductScreen>
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context);
-              // هنا يتم تنفيذ عملية الاسترجاع
-              for (var sale in sales) {
-                // يمكنك إضافة المنطق هنا للاسترجاع الفعلي
-                final provider =
-                    Provider.of<ProductProvider>(context, listen: false);
-                // await provider.returnSale(sale.id, quantityReturned, reason);
+              try {
+                // حذف جميع المبيعات المرتبطة بالفاتورة
+                for (var sale in sales) {
+                  await provider.deleteSale(sale.id);
+                }
+
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('تم حذف الفاتورة بنجاح'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+                setState(() {});
+              } catch (e) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('خطأ في الحذف: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
               }
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('تم الاسترجاع بنجاح'),
-                  backgroundColor: Colors.green,
-                ),
-              );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-            child: const Text('استرجاع'),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('حذف'),
           ),
         ],
       ),

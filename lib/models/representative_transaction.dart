@@ -48,7 +48,10 @@ class RepresentativeTransaction {
       type: map['type'] as String,
       amount: (map['amount'] as num).toDouble(),
       remainingDebt: (map['remainingDebt'] as num).toDouble(),
-      products: (map['products'] as String).split(',').where((e) => e.isNotEmpty).toList(),
+      products: (map['products'] as String)
+          .split(',')
+          .where((e) => e.isNotEmpty)
+          .toList(),
       dateTime: DateTime.parse(map['dateTime'] as String),
       notes: map['notes'] as String?,
       invoiceNumber: map['invoiceNumber'] as String?,

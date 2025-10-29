@@ -1,12 +1,13 @@
 // lib/screens/login_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:soundtry/screens/system_selection_screen.dart';
 import '../services/password_service.dart';
 import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final String systemType; // 'inventory' or 'maintenance'
-  
+
   const LoginScreen({
     super.key,
     this.systemType = 'inventory',
@@ -184,10 +185,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
 
                     const SizedBox(height: 16),
-                    
+
                     // زر العودة
                     TextButton.icon(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  const SystemSelectionScreen())),
                       icon: const Icon(Icons.arrow_back),
                       label: const Text('العودة'),
                     ),

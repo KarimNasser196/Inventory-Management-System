@@ -1,4 +1,4 @@
-// lib/screens/invoice_screen.dart (UPDATED - B&W Optimized with Real Barcode)
+// lib/screens/invoice_screen.dart (FINAL - Simple Clean Design)
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -18,7 +18,7 @@ class InvoiceScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('الفاتورة'),
-        backgroundColor: Colors.blue,
+        backgroundColor: Colors.blue[700],
         actions: [
           IconButton(
             icon: const Icon(Icons.print),
@@ -27,376 +27,337 @@ class InvoiceScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: Center(
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 800),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 800),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: Colors.grey[300]!, width: 2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Header
+                Container(
+                  padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: Colors.black, width: 2),
+                    color: Colors.grey[100],
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey[300]!, width: 2),
+                    ),
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Header - Black and White optimized
-                      Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          border: Border(
-                            bottom: BorderSide(color: Colors.black, width: 2),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Riad Soft Company',
-                                  style: TextStyle(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                const Text(
-                                  '01019187734',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                        color: Colors.black, width: 2),
-                                  ),
-                                  child: const Text(
-                                    'فاتورة مبيعات',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Column(
-                              children: [
-                                // Barcode placeholder - سيتم استبداله بالصورة الحقيقية في PDF
-                                Container(
-                                  width: 150,
-                                  height: 60,
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                        color: Colors.black, width: 1),
-                                  ),
-                                  child: Image.asset(
-                                    'assets/barcode.jpg',
-                                    fit: BoxFit.contain,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Center(
-                                        child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            const Icon(Icons.qr_code, size: 30),
-                                            Text(
-                                              invoice.invoiceNumber,
-                                              style:
-                                                  const TextStyle(fontSize: 8),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  invoice.invoiceNumber,
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // Invoice Info
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          border: Border(
-                            bottom:
-                                BorderSide(color: Colors.grey[400]!, width: 1),
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                _buildInfoItem(
-                                    'رقم الفاتورة:', invoice.invoiceNumber),
-                                _buildInfoItem('العميل:', invoice.customerName),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                _buildInfoItem(
-                                  'التاريخ:',
-                                  dateFormat.format(invoice.invoiceDate),
-                                ),
-                                _buildInfoItem(
-                                  'الوقت:',
-                                  timeFormat.format(invoice.invoiceDate),
-                                ),
-                              ],
-                            ),
-                            if (invoice.notes != null &&
-                                invoice.notes!.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              _buildInfoItem('ملاحظات:', invoice.notes!),
-                            ],
-                          ],
-                        ),
-                      ),
-
-                      // Items Table - Without profit column
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        child: Table(
-                          border:
-                              TableBorder.all(color: Colors.black, width: 1),
-                          columnWidths: const {
-                            0: FlexColumnWidth(0.5),
-                            1: FlexColumnWidth(3),
-                            2: FlexColumnWidth(1),
-                            3: FlexColumnWidth(1.5),
-                            4: FlexColumnWidth(1.2),
-                            5: FlexColumnWidth(1.5),
-                          },
-                          children: [
-                            // Header
-                            TableRow(
-                              decoration: BoxDecoration(
-                                color: Colors.grey[300],
-                              ),
-                              children: const [
-                                _TableHeader('#'),
-                                _TableHeader('المنتج'),
-                                _TableHeader('الكمية'),
-                                _TableHeader('السعر'),
-                                _TableHeader('خصم'),
-                                _TableHeader('الإجمالي'),
-                              ],
-                            ),
-                            // Items
-                            ...invoice.items.asMap().entries.map((entry) {
-                              final index = entry.key + 1;
-                              final item = entry.value;
-                              return TableRow(
-                                children: [
-                                  _TableCell(index.toString()),
-                                  _TableCell(item.productName,
-                                      align: TextAlign.right),
-                                  _TableCell(item.quantity.toString()),
-                                  _TableCell(
-                                      '${item.unitPrice.toStringAsFixed(2)}'),
-                                  _TableCell(
-                                    item.discount > 0
-                                        ? '${item.discount.toStringAsFixed(2)}'
-                                        : '-',
-                                  ),
-                                  _TableCell(
-                                    '${item.total.toStringAsFixed(2)}',
-                                    bold: true,
-                                  ),
-                                ],
-                              );
-                            }).toList(),
-                          ],
-                        ),
-                      ),
-
-                      // Totals
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.black, width: 2),
-                          ),
-                          child: Column(
-                            children: [
-                              _buildTotalRow(
-                                  'المجموع الفرعي:', invoice.subtotal),
-                              if (invoice.discount > 0) ...[
-                                const SizedBox(height: 8),
-                                _buildTotalRow('الخصم:', invoice.discount,
-                                    isDiscount: true),
-                              ],
-                              if (invoice.tax > 0) ...[
-                                const SizedBox(height: 8),
-                                _buildTotalRow('الضريبة:', invoice.tax),
-                              ],
-                              const SizedBox(height: 8),
-                              const Divider(color: Colors.black, thickness: 2),
-                              const SizedBox(height: 8),
-                              _buildTotalRow(
-                                'الإجمالي النهائي:',
-                                invoice.finalTotal,
-                                isFinal: true,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // Warranty Terms
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 20),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.black, width: 1),
-                        ),
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'شروط وأحكام الضمان',
+                              'Riad Soft Company',
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 28,
                                 fontWeight: FontWeight.bold,
-                                decoration: TextDecoration.underline,
                               ),
                             ),
                             const SizedBox(height: 8),
                             const Text(
-                                '• مدة ضمان البرامج أسبوع واحد من تاريخ الشراء',
-                                style: TextStyle(fontSize: 12)),
-                            const Text(
-                                '• الضمان على الأجهزة حسب شروط الشركة المصنعة',
-                                style: TextStyle(fontSize: 12)),
-                            const Text('• لا يتم استرجاع الأجهزة (استبدال فقط)',
-                                style: TextStyle(fontSize: 12)),
-                            const Text(
-                                '• يجب إحضار هذه الفاتورة عند المطالبة بالضمان',
-                                style: TextStyle(fontSize: 12)),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // Seller Signature Only
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            const Text(
-                              'توقيع البائع',
+                              '01019187734',
                               style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                            const SizedBox(height: 30),
+                            const SizedBox(height: 12),
                             Container(
-                              width: 200,
-                              height: 2,
-                              color: Colors.black,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                border:
+                                    Border.all(color: Colors.black, width: 2),
+                              ),
+                              child: const Text(
+                                'فاتورة مبيعات',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ],
                         ),
                       ),
-
-                      // Footer
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: const BoxDecoration(
-                          border: Border(
-                            top: BorderSide(color: Colors.black, width: 2),
+                      Column(
+                        children: [
+                          Container(
+                            width: 140,
+                            height: 60,
+                            child: Image.asset(
+                              'assets/barcode.jpg',
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Center(
+                                  child: Text(
+                                    invoice.invoiceNumber,
+                                    style: const TextStyle(fontSize: 10),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                );
+                              },
+                            ),
                           ),
-                        ),
-                        child: Column(
-                          children: [
-                            const Text(
-                              'شكراً لتعاملكم معنا',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'للاستفسارات: 01019187734 | Riad Soft Company',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[700],
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-              ),
+
+                // Invoice Info
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey[300]!, width: 2),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildInfoRow(
+                                'رقم الفاتورة:', invoice.invoiceNumber),
+                          ),
+                          Expanded(
+                            child:
+                                _buildInfoRow('العميل:', invoice.customerName),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildInfoRow('التاريخ:',
+                                dateFormat.format(invoice.invoiceDate)),
+                          ),
+                          Expanded(
+                            child: _buildInfoRow('الوقت:',
+                                timeFormat.format(invoice.invoiceDate)),
+                          ),
+                        ],
+                      ),
+                      if (invoice.notes != null &&
+                          invoice.notes!.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _buildInfoRow('ملاحظات:', invoice.notes!),
+                      ],
+                    ],
+                  ),
+                ),
+
+                // Items Table
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'المنتجات',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Table(
+                        border: TableBorder.all(
+                            color: Colors.grey[400]!, width: 1.5),
+                        columnWidths: const {
+                          0: FlexColumnWidth(0.6),
+                          1: FlexColumnWidth(3),
+                          2: FlexColumnWidth(1),
+                          3: FlexColumnWidth(1.5),
+                          4: FlexColumnWidth(1.5),
+                        },
+                        children: [
+                          // Header
+                          TableRow(
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                            ),
+                            children: const [
+                              _TableHeader('#'),
+                              _TableHeader('المنتج'),
+                              _TableHeader('الكمية'),
+                              _TableHeader('السعر'),
+                              _TableHeader('الإجمالي'),
+                            ],
+                          ),
+                          // Items
+                          ...invoice.items.asMap().entries.map((entry) {
+                            final index = entry.key + 1;
+                            final item = entry.value;
+                            return TableRow(
+                              decoration: BoxDecoration(
+                                color: index.isEven
+                                    ? Colors.grey[50]
+                                    : Colors.white,
+                              ),
+                              children: [
+                                _TableCell(index.toString()),
+                                _TableCell(item.productName,
+                                    align: TextAlign.right),
+                                _TableCell(item.quantity.toString()),
+                                _TableCell(
+                                    '${item.unitPrice.toStringAsFixed(2)}'),
+                                _TableCell(
+                                    '${item.total.toStringAsFixed(2)} جنيه',
+                                    bold: true),
+                              ],
+                            );
+                          }).toList(),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Totals
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    border: Border.all(color: Colors.grey[400]!, width: 2),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildTotalRow('المجموع الفرعي:', invoice.subtotal),
+                      if (invoice.discount > 0) ...[
+                        const SizedBox(height: 10),
+                        _buildTotalRow('الخصم الإجمالي:', invoice.discount,
+                            isDiscount: true),
+                      ],
+                      if (invoice.tax > 0) ...[
+                        const SizedBox(height: 10),
+                        _buildTotalRow('الضريبة:', invoice.tax),
+                      ],
+                      const SizedBox(height: 12),
+                      const Divider(color: Colors.black, thickness: 2),
+                      const SizedBox(height: 12),
+                      _buildTotalRow('الإجمالي النهائي:', invoice.finalTotal,
+                          isFinal: true),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Warranty
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey[400]!, width: 2),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'شروط وأحكام الضمان',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildWarrantyItem(
+                          '• مدة ضمان البرامج أسبوع واحد من تاريخ الشراء'),
+                      _buildWarrantyItem(
+                          '• الضمان على الأجهزة حسب شروط الشركة المصنعة'),
+                      _buildWarrantyItem(
+                          '• لا يتم استرجاع الأجهزة (استبدال فقط)'),
+                      _buildWarrantyItem(
+                          '• يجب إحضار هذه الفاتورة عند المطالبة بالضمان'),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Signature
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    children: [
+                      const Text(
+                        'توقيع البائع',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+                      Container(
+                        width: 200,
+                        height: 2,
+                        color: Colors.black,
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+              ],
             ),
-          );
-        },
+          ),
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _printInvoice(context),
         icon: const Icon(Icons.print),
-        label: const Text('طباعة الفاتورة'),
-        backgroundColor: Colors.blue,
+        label: const Text('طباعة'),
+        backgroundColor: Colors.blue[700],
       ),
     );
   }
 
-  Widget _buildInfoItem(String label, String value) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 13),
-        ),
-      ],
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 14),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWarrantyItem(String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 13, height: 1.5),
+      ),
     );
   }
 
@@ -408,17 +369,16 @@ class InvoiceScreen extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontSize: isFinal ? 16 : 14,
+            fontSize: isFinal ? 18 : 15,
             fontWeight: FontWeight.bold,
           ),
         ),
         Text(
           '${amount.toStringAsFixed(2)} جنيه',
           style: TextStyle(
-            fontSize: isFinal ? 18 : 14,
+            fontSize: isFinal ? 20 : 15,
             fontWeight: FontWeight.bold,
-            color: isDiscount ? Colors.red : Colors.black,
-            decoration: isFinal ? TextDecoration.underline : null,
+            color: isDiscount ? Colors.red[700] : Colors.black,
           ),
         ),
       ],
@@ -472,12 +432,12 @@ class _TableHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(10),
       child: Text(
         text,
         style: const TextStyle(
           fontWeight: FontWeight.bold,
-          fontSize: 12,
+          fontSize: 14,
         ),
         textAlign: TextAlign.center,
       ),
@@ -499,11 +459,11 @@ class _TableCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(10),
       child: Text(
         text,
         style: TextStyle(
-          fontSize: 11,
+          fontSize: 13,
           fontWeight: bold ? FontWeight.bold : FontWeight.normal,
         ),
         textAlign: align,

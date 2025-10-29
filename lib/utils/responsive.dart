@@ -8,7 +8,7 @@ class Responsive {
   static late double _screenHeight;
   static late double _blockSizeHorizontal;
   static late double _blockSizeVertical;
-  
+
   // أبعاد التصميم المرجعي
   static const double _designWidth = 1920.0;
   static const double _designHeight = 1080.0;
@@ -22,14 +22,14 @@ class Responsive {
   }
 
   // نوع الجهاز
-  static bool isMobile(BuildContext context) => 
+  static bool isMobile(BuildContext context) =>
       MediaQuery.of(context).size.width < 600;
-  
+
   static bool isTablet(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     return width >= 600 && width < 1024;
   }
-  
+
   static bool isDesktop(BuildContext context) =>
       MediaQuery.of(context).size.width >= 1024;
 
@@ -84,9 +84,10 @@ class Responsive {
   // كسور الشاشة
   static double get screenWidth => _screenWidth;
   static double get screenHeight => _screenHeight;
-  
+
   static double widthPercent(double percent) => _screenWidth * (percent / 100);
-  static double heightPercent(double percent) => _screenHeight * (percent / 100);
+  static double heightPercent(double percent) =>
+      _screenHeight * (percent / 100);
 
   // حجم النص المتجاوب
   static double textSize(BuildContext context, double size) {
@@ -96,8 +97,10 @@ class Responsive {
   }
 
   // SizedBox متجاوب
-  static SizedBox hBox(double width) => SizedBox(width: Responsive.width(width));
-  static SizedBox vBox(double height) => SizedBox(height: Responsive.height(height));
+  static SizedBox hBox(double width) =>
+      SizedBox(width: Responsive.width(width));
+  static SizedBox vBox(double height) =>
+      SizedBox(height: Responsive.height(height));
 
   // Grid Count متجاوب
   static int gridCount(BuildContext context) {
