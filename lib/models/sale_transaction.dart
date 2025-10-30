@@ -1,4 +1,4 @@
-// lib/models/sale_transaction.dart (FULLY FIXED)
+// lib/models/sale_transaction.dart (UPDATED WITH REPRESENTATIVES & PAYMENTS)
 
 import 'package:flutter/foundation.dart';
 
@@ -15,9 +15,18 @@ class SaleTransaction {
   String supplierName;
   DateTime saleDateTime;
   String? notes;
+  
+  // ⭐ حقول جديدة للمندوبين والدفعات
+  String? representativeId;
+  String paymentType; // 'نقد' أو 'آجل'
+  double paidAmount; // المبلغ المدفوع
+  double remainingAmount; // المتبقي
 
-  // FIX: Make totalAmount a getter so it always reflects current values
   double get totalAmount => (unitPrice * quantitySold).toDouble();
+  
+  bool get isFullyPaid => remainingAmount <= 0;
+  
+  bool get isDeferred => paymentType == 'آجل';
 
   SaleTransaction({
     this.id,
@@ -32,15 +41,19 @@ class SaleTransaction {
     required this.supplierName,
     DateTime? saleDateTime,
     this.notes,
-  }) : saleDateTime = saleDateTime ?? DateTime.now() {
-    // Validate inputs
+    this.representativeId,
+    this.paymentType = 'نقد',
+    double? paidAmount,
+    double? remainingAmount,
+  })  : saleDateTime = saleDateTime ?? DateTime.now(),
+        paidAmount = paidAmount ?? 0.0,
+        remainingAmount = remainingAmount ?? 0.0 {
     if (unitPrice < 0 || quantitySold < 0) {
       throw ArgumentError('Unit price and quantity must be non-negative');
     }
   }
 
   factory SaleTransaction.fromMap(Map<String, dynamic> map) {
-    // FIX: Safe DateTime parsing
     DateTime parsedDate;
     try {
       parsedDate = DateTime.parse(map['saleDateTime'] as String);
@@ -62,6 +75,10 @@ class SaleTransaction {
       supplierName: map['supplierName'] as String,
       saleDateTime: parsedDate,
       notes: map['notes'] as String?,
+      representativeId: map['representativeId'] as String?,
+      paymentType: map['paymentType'] as String? ?? 'نقد',
+      paidAmount: (map['paidAmount'] as num?)?.toDouble() ?? 0.0,
+      remainingAmount: (map['remainingAmount'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -80,6 +97,10 @@ class SaleTransaction {
       'supplierName': supplierName,
       'saleDateTime': saleDateTime.toIso8601String(),
       'notes': notes,
+      'representativeId': representativeId,
+      'paymentType': paymentType,
+      'paidAmount': paidAmount,
+      'remainingAmount': remainingAmount,
     };
   }
 
@@ -96,6 +117,10 @@ class SaleTransaction {
     String? supplierName,
     DateTime? saleDateTime,
     String? notes,
+    String? representativeId,
+    String? paymentType,
+    double? paidAmount,
+    double? remainingAmount,
   }) {
     return SaleTransaction(
       id: id ?? this.id,
@@ -111,10 +136,28 @@ class SaleTransaction {
       supplierName: supplierName ?? this.supplierName,
       saleDateTime: saleDateTime ?? this.saleDateTime,
       notes: notes ?? this.notes,
+      representativeId: representativeId ?? this.representativeId,
+      paymentType: paymentType ?? this.paymentType,
+      paidAmount: paidAmount ?? this.paidAmount,
+      remainingAmount: remainingAmount ?? this.remainingAmount,
     );
   }
 
   String getFormattedDateTime() {
     return '${saleDateTime.year}-${saleDateTime.month.toString().padLeft(2, '0')}-${saleDateTime.day.toString().padLeft(2, '0')} ${saleDateTime.hour.toString().padLeft(2, '0')}:${saleDateTime.minute.toString().padLeft(2, '0')}';
+  }
+  
+  String getPaymentStatus() {
+    if (paymentType == 'نقد') {
+      return 'نقد';
+    } else {
+      if (isFullyPaid) {
+        return 'مسدد';
+      } else if (paidAmount > 0) {
+        return 'دفعة جزئية';
+      } else {
+        return 'آجل';
+      }
+    }
   }
 }

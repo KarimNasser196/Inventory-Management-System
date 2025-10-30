@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:soundtry/providers/maintenance_provider.dart';
 import 'package:soundtry/providers/navigation_provider.dart';
+import 'package:soundtry/providers/representative_provider.dart';
 import 'package:soundtry/screens/system_selection_screen.dart';
 import 'package:soundtry/services/password_service.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -36,6 +37,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
         ChangeNotifierProvider(create: (_) => MaintenanceProvider()),
+        ChangeNotifierProvider(create: (_) => RepresentativeProvider()), // ⭐ جديد
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

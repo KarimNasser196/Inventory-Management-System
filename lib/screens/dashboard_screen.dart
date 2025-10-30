@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/navigation_provider.dart';
 import 'manage_categories_screen.dart';
+import 'representatives_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -70,6 +71,19 @@ class DashboardScreen extends StatelessWidget {
                       const SizedBox(height: 12),
                       _buildQuickActionCard(
                         context,
+                        'المندوبين والعملاء',
+                        Icons.people,
+                        Colors.indigo,
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const RepresentativesScreen(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildQuickActionCard(
+                        context,
                         'إدارة البيانات',
                         Icons.settings_applications,
                         Colors.teal,
@@ -117,6 +131,18 @@ class DashboardScreen extends StatelessWidget {
                         Icons.bar_chart,
                         Colors.purple,
                         () => _navigateToScreen(context, 4),
+                      ),
+                      _buildQuickActionCard(
+                        context,
+                        'المندوبين',
+                        Icons.people,
+                        Colors.indigo,
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const RepresentativesScreen(),
+                          ),
+                        ),
                       ),
                       _buildQuickActionCard(
                         context,
