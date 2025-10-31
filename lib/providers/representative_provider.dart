@@ -37,7 +37,8 @@ class RepresentativeProvider with ChangeNotifier {
   Future<void> loadRepresentatives() async {
     try {
       final data = await _dbHelper.getRepresentatives();
-      _representatives = data.map((map) => Representative.fromMap(map)).toList();
+      _representatives =
+          data.map((map) => Representative.fromMap(map)).toList();
       _applyFilters();
       notifyListeners();
       debugPrint('Loaded ${_representatives.length} representatives');
@@ -55,7 +56,8 @@ class RepresentativeProvider with ChangeNotifier {
     }).toList();
 
     // ترتيب حسب المديونية (الأعلى أولاً)
-    _filteredRepresentatives.sort((a, b) => b.remainingDebt.compareTo(a.remainingDebt));
+    _filteredRepresentatives
+        .sort((a, b) => b.remainingDebt.compareTo(a.remainingDebt));
   }
 
   // تغيير الفلتر حسب النوع
@@ -92,12 +94,12 @@ class RepresentativeProvider with ChangeNotifier {
   Future<bool> updateRepresentative(Representative representative) async {
     try {
       if (representative.id == null) return false;
-      
+
       final result = await _dbHelper.updateRepresentative(
         representative.id!,
         representative.toMap(),
       );
-      
+
       if (result > 0) {
         await loadRepresentatives();
         debugPrint('Updated representative id: ${representative.id}');
@@ -220,50 +222,107 @@ class RepresentativeProvider with ChangeNotifier {
   }
 
   // تسجيل مرتجع بضاعة
+  // تسجيل مرتجع
   Future<bool> recordReturn({
     required int representativeId,
     required double returnAmount,
     required String productsSummary,
-    List<int>? saleIds,
+    required String invoiceNumber,
     String? notes,
   }) async {
     try {
-      final rep = getRepresentativeById(representativeId);
-      if (rep == null) return false;
+      final db = await _dbHelper.database;
 
-      // تقليل إجمالي الديون بقيمة المرتجع
-      final updatedRep = rep.copyWith(
-        totalDebt: (rep.totalDebt - returnAmount).clamp(0.0, double.infinity),
+      // الحصول على المندوب
+      final repData = await db.query(
+        'representatives',
+        where: 'id = ?',
+        whereArgs: [representativeId],
       );
 
-      // حفظ معاملة المرتجع
-      final transaction = RepresentativeTransaction(
-        representativeId: representativeId,
-        representativeName: rep.name,
-        type: 'مرتجع',
-        amount: returnAmount,
-        paidAmount: 0,
-        remainingDebt: updatedRep.remainingDebt,
-        productsSummary: productsSummary,
-        saleIds: saleIds?.join(','),
-        notes: notes,
+      if (repData.isEmpty) {
+        debugPrint('❌ المندوب غير موجود');
+        return false;
+      }
+
+      // ⭐⭐⭐ استخدام نفس الأسماء الموجودة في الـ database
+      // بنقرأ من الأعمدة اللي راجعة من query
+      final currentTotalDebt =
+          (repData.first['totalDebt'] as num?)?.toDouble() ??
+              (repData.first['total_debt'] as num?)?.toDouble() ??
+              0.0;
+      final currentTotalPaid =
+          (repData.first['totalPaid'] as num?)?.toDouble() ??
+              (repData.first['total_paid'] as num?)?.toDouble() ??
+              0.0;
+
+      debugPrint('📊 البيانات الحالية:');
+      debugPrint('   - إجمالي الدين: $currentTotalDebt');
+      debugPrint('   - إجمالي المدفوع: $currentTotalPaid');
+      debugPrint('   - قيمة المرتجع: $returnAmount');
+
+      // تحديث الحساب: تقليل الدين
+      final newTotalDebt = currentTotalDebt - returnAmount;
+      final newRemainingDebt = newTotalDebt - currentTotalPaid;
+
+      debugPrint('📊 البيانات الجديدة:');
+      debugPrint('   - إجمالي الدين الجديد: $newTotalDebt');
+      debugPrint('   - المتبقي الجديد: $newRemainingDebt');
+
+      // ⭐⭐⭐ استخدام نفس الطريقة الموجودة في updateRepresentative
+      // نحدث بالطريقة الآمنة
+      final representative = getRepresentativeById(representativeId);
+      if (representative == null) {
+        debugPrint('❌ فشل في الحصول على بيانات المندوب');
+        return false;
+      }
+
+      final updatedRep = representative.copyWith(
+        totalDebt: newTotalDebt,
+        totalPaid: currentTotalPaid, // نفس القيمة
       );
 
-      await _dbHelper.insertRepresentativeTransaction(transaction.toMap());
-      await updateRepresentative(updatedRep);
+      // استخدام دالة التحديث الموجودة
+      final updateSuccess = await updateRepresentative(updatedRep);
 
-      debugPrint('Recorded return for representative ${rep.name}');
+      if (!updateSuccess) {
+        debugPrint('❌ فشل تحديث بيانات المندوب');
+        return false;
+      }
+
+      // ⭐⭐⭐ تسجيل المعاملة باستخدام أسماء camelCase الصحيحة
+      final transactionResult = await db.insert('representative_transactions', {
+        'representativeId': representativeId, // بدون underscore
+        'representativeName': representative.name,
+        'type': 'مرتجع',
+        'amount': returnAmount,
+        'paidAmount': 0,
+        'remainingDebt': newRemainingDebt,
+        'productsSummary': productsSummary,
+        'invoiceNumber': invoiceNumber,
+        'notes': notes,
+        'dateTime': DateTime.now().toIso8601String(),
+      });
+
+      if (transactionResult == 0) {
+        debugPrint('❌ فشل تسجيل معاملة المرتجع');
+        return false;
+      }
+
+      debugPrint('✅ تم تسجيل المرتجع بنجاح - الدين الجديد: $newRemainingDebt');
+
       return true;
     } catch (e) {
-      debugPrint('Error recording return: $e');
+      debugPrint('❌ Error recording return: $e');
       return false;
     }
   }
 
-  // الحصول على معاملات مندوب/عميل معين
-  Future<List<RepresentativeTransaction>> getTransactions(int representativeId) async {
+  Future<List<RepresentativeTransaction>> getTransactions(
+      int representativeId) async {
     try {
-      final data = await _dbHelper.getRepresentativeTransactions(representativeId);
+      final data =
+          await _dbHelper.getRepresentativeTransactions(representativeId);
       return data.map((map) => RepresentativeTransaction.fromMap(map)).toList();
     } catch (e) {
       debugPrint('Error getting transactions: $e');

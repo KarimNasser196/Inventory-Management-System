@@ -360,9 +360,12 @@ class _RepresentativesScreenState extends State<RepresentativesScreen> {
                       RepresentativeDetailsScreen(representative: rep),
                 ),
               );
-              if (result == true) {
-                Provider.of<RepresentativeProvider>(context, listen: false)
-                    .loadRepresentatives();
+
+              // ⭐ تحديث البيانات دايماً بعد الرجوع
+              if (mounted) {
+                final provider =
+                    Provider.of<RepresentativeProvider>(context, listen: false);
+                await provider.loadRepresentatives();
               }
             },
           ),

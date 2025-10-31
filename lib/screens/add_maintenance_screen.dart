@@ -1,4 +1,4 @@
-// lib/screens/add_maintenance_screen.dart (نسخة مبسطة)
+// lib/screens/add_maintenance_screen.dart (محدث مع حالة "مرفوض" وإخفاء الأسعار)
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -18,6 +18,7 @@ class _AddMaintenanceScreenState extends State<AddMaintenanceScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _deviceTypeController;
   late TextEditingController _customerNameController;
+  late TextEditingController _customerPhoneController;
   late TextEditingController _problemController;
   late TextEditingController _costController;
   late TextEditingController _paidAmountController;
@@ -31,6 +32,7 @@ class _AddMaintenanceScreenState extends State<AddMaintenanceScreen> {
     'جاهز للاستلام',
     'تم التسليم',
     'ملغي',
+    'مرفوض', // ⭐ حالة جديدة
   ];
 
   @override
@@ -43,6 +45,9 @@ class _AddMaintenanceScreenState extends State<AddMaintenanceScreen> {
     );
     _customerNameController = TextEditingController(
       text: record?.customerName ?? '',
+    );
+    _customerPhoneController = TextEditingController(
+      text: record?.customerPhone ?? '',
     );
     _problemController = TextEditingController(
       text: record?.problemDescription ?? '',
@@ -63,6 +68,7 @@ class _AddMaintenanceScreenState extends State<AddMaintenanceScreen> {
   void dispose() {
     _deviceTypeController.dispose();
     _customerNameController.dispose();
+    _customerPhoneController.dispose();
     _problemController.dispose();
     _costController.dispose();
     _paidAmountController.dispose();
@@ -71,8 +77,6 @@ class _AddMaintenanceScreenState extends State<AddMaintenanceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 600;
-
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'تعديل سجل الصيانة' : 'سجل صيانة جديد'),
@@ -87,17 +91,43 @@ class _AddMaintenanceScreenState extends State<AddMaintenanceScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(isMobile ? 16 : 32),
+        padding: const EdgeInsets.all(32),
         child: Center(
           child: Container(
-            constraints: const BoxConstraints(maxWidth: 800),
+            constraints: const BoxConstraints(maxWidth: 900),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // معلومات الجهاز والعميل
-                  _buildSection('معلومات أساسية', Icons.info, Colors.blue, [
+                  // معلومات العميل والجهاز
+                  _buildSection(
+                      'معلومات العميل والجهاز', Icons.info, Colors.blue, [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildTextField(
+                            _customerNameController,
+                            'اسم العميل *',
+                            Icons.person_outline,
+                            validator: (value) =>
+                                value == null || value.isEmpty ? 'مطلوب' : null,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildTextField(
+                            _customerPhoneController,
+                            'رقم الهاتف *',
+                            Icons.phone,
+                            keyboardType: TextInputType.phone,
+                            validator: (value) =>
+                                value == null || value.isEmpty ? 'مطلوب' : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
                     _buildTextField(
                       _deviceTypeController,
                       'نوع الجهاز *',
@@ -105,27 +135,19 @@ class _AddMaintenanceScreenState extends State<AddMaintenanceScreen> {
                       validator: (value) =>
                           value == null || value.isEmpty ? 'مطلوب' : null,
                     ),
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                      _customerNameController,
-                      'اسم العميل *',
-                      Icons.person_outline,
-                      validator: (value) =>
-                          value == null || value.isEmpty ? 'مطلوب' : null,
-                    ),
                   ]),
 
                   const SizedBox(height: 24),
 
-                  // وصف المشكلة
+                  // وصف المشكلة/العطل
                   _buildSection(
-                    'وصف المشكلة',
+                    'وصف العطل',
                     Icons.report_problem,
                     Colors.orange,
                     [
                       _buildTextField(
                         _problemController,
-                        'وصف المشكلة *',
+                        'وصف العطل *',
                         Icons.description,
                         maxLines: 3,
                         validator: (value) =>
@@ -161,9 +183,9 @@ class _AddMaintenanceScreenState extends State<AddMaintenanceScreen> {
 
                   const SizedBox(height: 24),
 
-                  // التكاليف
+                  // التكاليف (مخفية - للاستخدام الداخلي فقط)
                   _buildSection(
-                    'التكاليف والدفع',
+                    'التكاليف والدفع (داخلي)',
                     Icons.attach_money,
                     Colors.teal,
                     [
@@ -172,12 +194,11 @@ class _AddMaintenanceScreenState extends State<AddMaintenanceScreen> {
                           Expanded(
                             child: _buildTextField(
                               _costController,
-                              'التكلفة *',
+                              'التكلفة',
                               Icons.paid,
                               keyboardType: TextInputType.number,
                               validator: (value) {
-                                if (value == null || value.isEmpty)
-                                  return 'مطلوب';
+                                if (value == null || value.isEmpty) return null;
                                 final cost = double.tryParse(value);
                                 if (cost == null || cost < 0) return 'رقم صحيح';
                                 return null;
@@ -474,6 +495,7 @@ class _AddMaintenanceScreenState extends State<AddMaintenanceScreen> {
         id: widget.record?.id,
         deviceType: _deviceTypeController.text,
         customerName: _customerNameController.text,
+        customerPhone: _customerPhoneController.text,
         problemDescription: _problemController.text,
         status: _selectedStatus,
         cost: double.tryParse(_costController.text) ?? 0,

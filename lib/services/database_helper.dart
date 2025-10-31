@@ -30,7 +30,7 @@ class DatabaseHelper {
         return await databaseFactory.openDatabase(
           path,
           options: OpenDatabaseOptions(
-            version: 10, // ⭐ تحديث النسخة
+            version: 12, // ⭐ تم تحديث النسخة إلى 11
             onCreate: _createDB,
             onUpgrade: _upgradeDB,
           ),
@@ -72,7 +72,8 @@ CREATE TABLE products (
   notes $textNullableType
 )
 ''');
-      await db.execute('CREATE INDEX idx_supplierName ON products(supplierName)');
+      await db
+          .execute('CREATE INDEX idx_supplierName ON products(supplierName)');
       debugPrint('Created products table');
 
       // جدول المبيعات
@@ -100,7 +101,8 @@ CREATE TABLE sales (
 ''');
       await db.execute('CREATE INDEX idx_productId_sales ON sales(productId)');
       await db.execute('CREATE INDEX idx_saleDateTime ON sales(saleDateTime)');
-      await db.execute('CREATE INDEX idx_representativeId ON sales(representativeId)');
+      await db.execute(
+          'CREATE INDEX idx_representativeId ON sales(representativeId)');
       debugPrint('Created sales table');
 
       // جدول حركة المخزون
@@ -118,31 +120,41 @@ CREATE TABLE inventory_transactions (
   FOREIGN KEY (productId) REFERENCES products (id) ON DELETE CASCADE
 )
 ''');
-      await db.execute('CREATE INDEX idx_productId_inventory ON inventory_transactions(productId)');
-      await db.execute('CREATE INDEX idx_dateTime_inventory ON inventory_transactions(dateTime)');
-      await db.execute('CREATE INDEX idx_relatedSaleId ON inventory_transactions(relatedSaleId)');
+      await db.execute(
+          'CREATE INDEX idx_productId_inventory ON inventory_transactions(productId)');
+      await db.execute(
+          'CREATE INDEX idx_dateTime_inventory ON inventory_transactions(dateTime)');
+      await db.execute(
+          'CREATE INDEX idx_relatedSaleId ON inventory_transactions(relatedSaleId)');
       debugPrint('Created inventory_transactions table');
 
       // جدول الصيانة
       await db.execute('''
 CREATE TABLE maintenance_records (
-  id $idType,
-  deviceType $textType,
-  customerName $textType,
-  problemDescription $textType,
-  status $textType,
-  cost $realType,
-  paidAmount $realType,
-  receivedDate $textType,
-  deliveryDate $textNullableType,
-  repairCode $textType
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  deviceType TEXT NOT NULL,
+  customerName TEXT NOT NULL,
+  customerPhone TEXT NOT NULL,
+  problemDescription TEXT NOT NULL,
+  status TEXT NOT NULL,
+  cost REAL NOT NULL,
+  paidAmount REAL NOT NULL,
+  receivedDate TEXT NOT NULL,
+  deliveryDate TEXT,
+  repairCode TEXT NOT NULL
 )
 ''');
-      await db.execute('CREATE INDEX idx_customerName ON maintenance_records(customerName)');
-      await db.execute('CREATE INDEX idx_status ON maintenance_records(status)');
-      await db.execute('CREATE INDEX idx_receivedDate ON maintenance_records(receivedDate)');
-      await db.execute('CREATE INDEX idx_repairCode ON maintenance_records(repairCode)');
-      debugPrint('Created maintenance_records table');
+      await db.execute(
+          'CREATE INDEX idx_customerName ON maintenance_records(customerName)');
+      await db.execute(
+          'CREATE INDEX idx_customerPhone ON maintenance_records(customerPhone)');
+      await db
+          .execute('CREATE INDEX idx_status ON maintenance_records(status)');
+      await db.execute(
+          'CREATE INDEX idx_receivedDate ON maintenance_records(receivedDate)');
+      await db.execute(
+          'CREATE INDEX idx_repairCode ON maintenance_records(repairCode)');
+      debugPrint('Created maintenance_records table with phone support');
 
       // جدول الأصناف
       await db.execute('''
@@ -212,9 +224,12 @@ CREATE TABLE representative_transactions (
   FOREIGN KEY (representativeId) REFERENCES representatives (id) ON DELETE CASCADE
 )
 ''');
-      await db.execute('CREATE INDEX idx_rep_trans_rep_id ON representative_transactions(representativeId)');
-      await db.execute('CREATE INDEX idx_rep_trans_date ON representative_transactions(dateTime)');
-      await db.execute('CREATE INDEX idx_rep_trans_type ON representative_transactions(type)');
+      await db.execute(
+          'CREATE INDEX idx_rep_trans_rep_id ON representative_transactions(representativeId)');
+      await db.execute(
+          'CREATE INDEX idx_rep_trans_date ON representative_transactions(dateTime)');
+      await db.execute(
+          'CREATE INDEX idx_rep_trans_type ON representative_transactions(type)');
       debugPrint('Created representative_transactions table');
 
       // ⭐ جدول تفاصيل المرتجعات
@@ -234,10 +249,11 @@ CREATE TABLE return_details (
   FOREIGN KEY (productId) REFERENCES products (id) ON DELETE CASCADE
 )
 ''');
-      await db.execute('CREATE INDEX idx_return_sale_id ON return_details(saleId)');
-      await db.execute('CREATE INDEX idx_return_rep_id ON return_details(representativeId)');
+      await db
+          .execute('CREATE INDEX idx_return_sale_id ON return_details(saleId)');
+      await db.execute(
+          'CREATE INDEX idx_return_rep_id ON return_details(representativeId)');
       debugPrint('Created return_details table');
-
     } catch (e) {
       debugPrint('Error creating tables: $e');
       rethrow;
@@ -305,9 +321,12 @@ CREATE TABLE IF NOT EXISTS representative_transactions (
   FOREIGN KEY (representativeId) REFERENCES representatives (id) ON DELETE CASCADE
 )
 ''');
-        await db.execute('CREATE INDEX idx_rep_trans_rep_id ON representative_transactions(representativeId)');
-        await db.execute('CREATE INDEX idx_rep_trans_date ON representative_transactions(dateTime)');
-        await db.execute('CREATE INDEX idx_rep_trans_type ON representative_transactions(type)');
+        await db.execute(
+            'CREATE INDEX idx_rep_trans_rep_id ON representative_transactions(representativeId)');
+        await db.execute(
+            'CREATE INDEX idx_rep_trans_date ON representative_transactions(dateTime)');
+        await db.execute(
+            'CREATE INDEX idx_rep_trans_type ON representative_transactions(type)');
         debugPrint('✅ Created representative_transactions table');
 
         // إضافة جدول تفاصيل المرتجعات
@@ -327,43 +346,72 @@ CREATE TABLE IF NOT EXISTS return_details (
   FOREIGN KEY (productId) REFERENCES products (id) ON DELETE CASCADE
 )
 ''');
-        await db.execute('CREATE INDEX idx_return_sale_id ON return_details(saleId)');
-        await db.execute('CREATE INDEX idx_return_rep_id ON return_details(representativeId)');
+        await db.execute(
+            'CREATE INDEX idx_return_sale_id ON return_details(saleId)');
+        await db.execute(
+            'CREATE INDEX idx_return_rep_id ON return_details(representativeId)');
         debugPrint('✅ Created return_details table');
 
         // تحديث جدول المبيعات لإضافة الأعمدة الجديدة
         final salesColumns = await db.rawQuery('PRAGMA table_info(sales)');
-        final columnNames = salesColumns.map((col) => col['name'] as String).toSet();
+        final columnNames =
+            salesColumns.map((col) => col['name'] as String).toSet();
 
         if (!columnNames.contains('representativeId')) {
-          await db.execute('ALTER TABLE sales ADD COLUMN representativeId TEXT');
+          await db
+              .execute('ALTER TABLE sales ADD COLUMN representativeId TEXT');
           debugPrint('✅ Added representativeId to sales');
         }
 
         if (!columnNames.contains('paymentType')) {
-          await db.execute('ALTER TABLE sales ADD COLUMN paymentType TEXT DEFAULT "نقد"');
+          await db.execute(
+              'ALTER TABLE sales ADD COLUMN paymentType TEXT DEFAULT "نقد"');
           debugPrint('✅ Added paymentType to sales');
         }
 
         if (!columnNames.contains('paidAmount')) {
-          await db.execute('ALTER TABLE sales ADD COLUMN paidAmount REAL DEFAULT 0');
+          await db.execute(
+              'ALTER TABLE sales ADD COLUMN paidAmount REAL DEFAULT 0');
           debugPrint('✅ Added paidAmount to sales');
         }
 
         if (!columnNames.contains('remainingAmount')) {
-          await db.execute('ALTER TABLE sales ADD COLUMN remainingAmount REAL DEFAULT 0');
+          await db.execute(
+              'ALTER TABLE sales ADD COLUMN remainingAmount REAL DEFAULT 0');
           debugPrint('✅ Added remainingAmount to sales');
         }
 
-        debugPrint('✅ Successfully upgraded to version 10 with Representatives & Customers system');
+        debugPrint(
+            '✅ Successfully upgraded to version 10 with Representatives & Customers system');
       } catch (e) {
         debugPrint('❌ Error in version 10 upgrade: $e');
+      }
+    }
+
+    // =====================================================
+    // النسخة 11: إضافة عمود customerPhone
+    // =====================================================
+    if (oldVersion < 11) {
+      try {
+        final maintenanceColumns =
+            await db.rawQuery('PRAGMA table_info(maintenance_records)');
+        final columnNames =
+            maintenanceColumns.map((col) => col['name'] as String).toSet();
+
+        if (!columnNames.contains('customerPhone')) {
+          await db.execute(
+              'ALTER TABLE maintenance_records ADD COLUMN customerPhone TEXT DEFAULT ""');
+          debugPrint('✅ Added customerPhone to maintenance_records');
+        }
+
+        debugPrint('✅ Successfully upgraded to version 11 with phone support');
+      } catch (e) {
+        debugPrint('❌ Error in version 11 upgrade: $e');
       }
     }
   }
 
   // ========== دوال المندوبين/العملاء ==========
-
   Future<List<Map<String, dynamic>>> getRepresentatives({String? type}) async {
     final db = await database;
     try {
@@ -394,7 +442,8 @@ CREATE TABLE IF NOT EXISTS return_details (
     }
   }
 
-  Future<int> updateRepresentative(int id, Map<String, dynamic> representative) async {
+  Future<int> updateRepresentative(
+      int id, Map<String, dynamic> representative) async {
     final db = await database;
     try {
       return await db.update(
@@ -412,7 +461,8 @@ CREATE TABLE IF NOT EXISTS return_details (
   Future<int> deleteRepresentative(int id) async {
     final db = await database;
     try {
-      return await db.delete('representatives', where: 'id = ?', whereArgs: [id]);
+      return await db
+          .delete('representatives', where: 'id = ?', whereArgs: [id]);
     } catch (e) {
       debugPrint('Error deleting representative: $e');
       return 0;
@@ -420,8 +470,8 @@ CREATE TABLE IF NOT EXISTS return_details (
   }
 
   // ========== دوال معاملات المندوبين ==========
-
-  Future<int> insertRepresentativeTransaction(Map<String, dynamic> transaction) async {
+  Future<int> insertRepresentativeTransaction(
+      Map<String, dynamic> transaction) async {
     final db = await database;
     try {
       final id = await db.insert('representative_transactions', transaction);
@@ -433,7 +483,8 @@ CREATE TABLE IF NOT EXISTS return_details (
     }
   }
 
-  Future<List<Map<String, dynamic>>> getRepresentativeTransactions(int representativeId) async {
+  Future<List<Map<String, dynamic>>> getRepresentativeTransactions(
+      int representativeId) async {
     final db = await database;
     try {
       return await db.query(
@@ -451,7 +502,8 @@ CREATE TABLE IF NOT EXISTS return_details (
   Future<List<Map<String, dynamic>>> getAllRepresentativeTransactions() async {
     final db = await database;
     try {
-      return await db.query('representative_transactions', orderBy: 'dateTime DESC');
+      return await db.query('representative_transactions',
+          orderBy: 'dateTime DESC');
     } catch (e) {
       debugPrint('Error fetching all representative transactions: $e');
       return [];
@@ -459,7 +511,6 @@ CREATE TABLE IF NOT EXISTS return_details (
   }
 
   // ========== دوال المرتجعات ==========
-
   Future<int> insertReturnDetail(Map<String, dynamic> returnDetail) async {
     final db = await database;
     try {
@@ -498,7 +549,6 @@ CREATE TABLE IF NOT EXISTS return_details (
   }
 
   // ========== دوال المنتجات ==========
-
   Future<List<Map<String, dynamic>>> getProducts() async {
     final db = await database;
     try {
@@ -547,11 +597,8 @@ CREATE TABLE IF NOT EXISTS return_details (
   Future<int> deleteProduct(int id) async {
     final db = await database;
     try {
-      final result = await db.delete(
-        'products',
-        where: 'id = ?',
-        whereArgs: [id],
-      );
+      final result =
+          await db.delete('products', where: 'id = ?', whereArgs: [id]);
       debugPrint('Deleted product id $id');
       return result;
     } catch (e) {
@@ -578,7 +625,6 @@ CREATE TABLE IF NOT EXISTS return_details (
   }
 
   // ========== دوال المبيعات ==========
-
   Future<int> insertSale(Map<String, dynamic> sale) async {
     final db = await database;
     try {
@@ -610,12 +656,8 @@ CREATE TABLE IF NOT EXISTS return_details (
   Future<int> updateSale(int saleId, Map<String, dynamic> saleData) async {
     final db = await database;
     try {
-      final result = await db.update(
-        'sales',
-        saleData,
-        where: 'id = ?',
-        whereArgs: [saleId],
-      );
+      final result = await db
+          .update('sales', saleData, where: 'id = ?', whereArgs: [saleId]);
       debugPrint('Updated sale id $saleId');
       return result;
     } catch (e) {
@@ -627,11 +669,8 @@ CREATE TABLE IF NOT EXISTS return_details (
   Future<int> deleteSale(int saleId) async {
     final db = await database;
     try {
-      final result = await db.delete(
-        'sales',
-        where: 'id = ?',
-        whereArgs: [saleId],
-      );
+      final result =
+          await db.delete('sales', where: 'id = ?', whereArgs: [saleId]);
       debugPrint('Deleted sale id $saleId');
       return result;
     } catch (e) {
@@ -641,15 +680,12 @@ CREATE TABLE IF NOT EXISTS return_details (
   }
 
   // ========== دوال حركة المخزون ==========
-
-  Future<int> insertInventoryTransaction(Map<String, dynamic> transaction) async {
+  Future<int> insertInventoryTransaction(
+      Map<String, dynamic> transaction) async {
     final db = await database;
     try {
-      final id = await db.insert(
-        'inventory_transactions',
-        transaction,
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      final id = await db.insert('inventory_transactions', transaction,
+          conflictAlgorithm: ConflictAlgorithm.replace);
       debugPrint('Inserted inventory transaction with id: $id');
       return id;
     } catch (e) {
@@ -661,10 +697,8 @@ CREATE TABLE IF NOT EXISTS return_details (
   Future<List<Map<String, dynamic>>> getAllInventoryTransactions() async {
     final db = await database;
     try {
-      final transactions = await db.query(
-        'inventory_transactions',
-        orderBy: 'dateTime DESC',
-      );
+      final transactions =
+          await db.query('inventory_transactions', orderBy: 'dateTime DESC');
       debugPrint('Fetched ${transactions.length} inventory transactions');
       return transactions;
     } catch (e) {
@@ -674,14 +708,11 @@ CREATE TABLE IF NOT EXISTS return_details (
   }
 
   // ========== دوال الصيانة ==========
-
   Future<List<Map<String, dynamic>>> getMaintenanceRecords() async {
     final db = await database;
     try {
-      final records = await db.query(
-        'maintenance_records',
-        orderBy: 'receivedDate DESC',
-      );
+      final records =
+          await db.query('maintenance_records', orderBy: 'receivedDate DESC');
       debugPrint('Fetched ${records.length} maintenance records');
       return records;
     } catch (e) {
@@ -693,11 +724,8 @@ CREATE TABLE IF NOT EXISTS return_details (
   Future<int> insertMaintenanceRecord(Map<String, dynamic> record) async {
     final db = await database;
     try {
-      final id = await db.insert(
-        'maintenance_records',
-        record,
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      final id = await db.insert('maintenance_records', record,
+          conflictAlgorithm: ConflictAlgorithm.replace);
       debugPrint('Inserted maintenance record with id: $id');
       return id;
     } catch (e) {
@@ -706,15 +734,12 @@ CREATE TABLE IF NOT EXISTS return_details (
     }
   }
 
-  Future<int> updateMaintenanceRecord(int id, Map<String, dynamic> record) async {
+  Future<int> updateMaintenanceRecord(
+      int id, Map<String, dynamic> record) async {
     final db = await database;
     try {
-      final result = await db.update(
-        'maintenance_records',
-        record,
-        where: 'id = ?',
-        whereArgs: [id],
-      );
+      final result = await db.update('maintenance_records', record,
+          where: 'id = ?', whereArgs: [id]);
       debugPrint('Updated maintenance record id $id: $result row(s) affected');
       return result;
     } catch (e) {
@@ -726,11 +751,8 @@ CREATE TABLE IF NOT EXISTS return_details (
   Future<int> deleteMaintenanceRecord(int id) async {
     final db = await database;
     try {
-      final result = await db.delete(
-        'maintenance_records',
-        where: 'id = ?',
-        whereArgs: [id],
-      );
+      final result = await db
+          .delete('maintenance_records', where: 'id = ?', whereArgs: [id]);
       debugPrint('Deleted maintenance record id $id: $result row(s) affected');
       return result;
     } catch (e) {
@@ -739,15 +761,14 @@ CREATE TABLE IF NOT EXISTS return_details (
     }
   }
 
-  Future<List<Map<String, dynamic>>> getMaintenanceRecordsByStatus(String status) async {
+  Future<List<Map<String, dynamic>>> getMaintenanceRecordsByStatus(
+      String status) async {
     final db = await database;
     try {
-      final records = await db.query(
-        'maintenance_records',
-        where: 'status = ?',
-        whereArgs: [status],
-        orderBy: 'receivedDate DESC',
-      );
+      final records = await db.query('maintenance_records',
+          where: 'status = ?',
+          whereArgs: [status],
+          orderBy: 'receivedDate DESC');
       return records;
     } catch (e) {
       debugPrint('Error fetching maintenance records by status: $e');
@@ -755,15 +776,12 @@ CREATE TABLE IF NOT EXISTS return_details (
     }
   }
 
-  Future<Map<String, dynamic>?> getMaintenanceRecordByCode(String repairCode) async {
+  Future<Map<String, dynamic>?> getMaintenanceRecordByCode(
+      String repairCode) async {
     final db = await database;
     try {
-      final records = await db.query(
-        'maintenance_records',
-        where: 'repairCode = ?',
-        whereArgs: [repairCode],
-        limit: 1,
-      );
+      final records = await db.query('maintenance_records',
+          where: 'repairCode = ?', whereArgs: [repairCode], limit: 1);
       if (records.isNotEmpty) {
         return records.first;
       }
@@ -815,7 +833,6 @@ CREATE TABLE IF NOT EXISTS return_details (
   }
 
   // ========== دوال عامة ==========
-
   Future<void> deleteAllData() async {
     final db = await database;
     try {

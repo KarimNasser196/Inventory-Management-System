@@ -1,5 +1,6 @@
-// lib/screens/sell_product_screen.dart (UPDATED - مع دعم المندوبين ونوع الدفع)
+// lib/screens/sell_product_screen.dart (DESKTOP ONLY - مع دعم المندوبين ونوع الدفع)
 
+import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -37,7 +38,6 @@ class SellProductScreen extends StatefulWidget {
 class _SellProductScreenState extends State<SellProductScreen>
     with SingleTickerProviderStateMixin {
   final _searchController = TextEditingController();
-  final _customerNameController = TextEditingController();
   final _notesController = TextEditingController();
   late TabController _tabController;
   String? _selectedCategoryFilter;
@@ -50,9 +50,11 @@ class _SellProductScreenState extends State<SellProductScreen>
   final _invoiceSearchController = TextEditingController();
   String _invoiceSearchQuery = '';
 
-  // ===== متغيرات جديدة للمندوب ونوع الدفع =====
+  String? _selectedClientId;
+  String? _selectedClientName;
+  String _clientType = 'عميل';
   Representative? _selectedRepresentative;
-  String _paymentType = 'نقد'; // 'نقد' أو 'آجل'
+  String _paymentType = 'نقد';
 
   @override
   void initState() {
@@ -78,10 +80,9 @@ class _SellProductScreenState extends State<SellProductScreen>
 
   @override
   void dispose() {
-    _searchController.dispose();
-    _customerNameController.dispose();
-    _notesController.dispose();
     _tabController.dispose();
+    _searchController.dispose();
+    _notesController.dispose();
     _invoiceSearchController.dispose();
     _paidAmountController.dispose();
     super.dispose();
@@ -143,19 +144,18 @@ class _SellProductScreenState extends State<SellProductScreen>
   void _clearCart() {
     setState(() {
       _cart.clear();
-      _customerNameController.clear();
-      _notesController.clear();
-      _paidAmountController.clear(); // ⭐ جديد
+      _selectedClientId = null;
+      _selectedClientName = null;
+      _clientType = 'عميل';
       _selectedRepresentative = null;
       _paymentType = 'نقد';
+      _notesController.clear();
+      _paidAmountController.clear();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 800;
-
     return Scaffold(
       body: Column(
         children: [
@@ -176,7 +176,7 @@ class _SellProductScreenState extends State<SellProductScreen>
             child: TabBarView(
               controller: _tabController,
               children: [
-                _buildSellTab(isMobile),
+                _buildSellTab(),
                 _buildInvoicesListTab(),
               ],
             ),
@@ -186,7 +186,7 @@ class _SellProductScreenState extends State<SellProductScreen>
     );
   }
 
-  Widget _buildSellTab(bool isMobile) {
+  Widget _buildSellTab() {
     return Consumer2<ProductProvider, RepresentativeProvider>(
       builder: (context, productProvider, repProvider, _) {
         if (productProvider.isLoading) {
@@ -195,13 +195,9 @@ class _SellProductScreenState extends State<SellProductScreen>
 
         final filteredProducts = _getFilteredProducts(productProvider.products);
 
-        if (isMobile) {
-          return _buildMobileSellView(
-              productProvider, repProvider, filteredProducts);
-        }
-
         return Row(
           children: [
+            // === Left Panel: Products List ===
             Expanded(
               flex: 3,
               child: Column(
@@ -338,6 +334,7 @@ class _SellProductScreenState extends State<SellProductScreen>
                 ],
               ),
             ),
+            // === Right Panel: Cart ===
             Container(
               width: 400,
               decoration: BoxDecoration(
@@ -472,452 +469,7 @@ class _SellProductScreenState extends State<SellProductScreen>
     );
   }
 
-  Widget _buildMobileSellView(ProductProvider provider,
-      RepresentativeProvider repProvider, List<Product> filteredProducts) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          color: Colors.grey[50],
-          child: Column(
-            children: [
-              TextField(
-                controller: _searchController,
-                decoration: const InputDecoration(
-                  labelText: 'بحث عن منتج',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.search),
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-                onChanged: (value) {
-                  provider.setSearchQuery(value);
-                },
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String?>(
-                value: _selectedCategoryFilter,
-                decoration: const InputDecoration(
-                  labelText: 'الصنف',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.filter_list),
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-                items: [
-                  const DropdownMenuItem(value: null, child: Text('الكل')),
-                  ..._availableCategories.map(
-                      (cat) => DropdownMenuItem(value: cat, child: Text(cat))),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    _selectedCategoryFilter = value;
-                  });
-                },
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: filteredProducts.length,
-            itemBuilder: (context, index) {
-              final product = filteredProducts[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  title: Text(product.name),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('الصنف: ${product.category ?? '-'}'),
-                      Text(
-                        'المتاح: ${product.quantity}',
-                        style: TextStyle(
-                          color:
-                              product.quantity > 0 ? Colors.green : Colors.red,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          _visiblePricesProducts.contains(product.id)
-                              ? Icons.visibility_off
-                              : Icons.visibility,
-                          color: Colors.blue,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            if (_visiblePricesProducts.contains(product.id)) {
-                              _visiblePricesProducts.remove(product.id);
-                            } else {
-                              _visiblePricesProducts.add(product.id!);
-                            }
-                          });
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.add_shopping_cart,
-                            color: Colors.green),
-                        onPressed: product.quantity > 0
-                            ? () => _showAddToCartDialog(product)
-                            : null,
-                      ),
-                    ],
-                  ),
-                  onTap: () {
-                    if (_visiblePricesProducts.contains(product.id)) {
-                      _showPricesDialog(product);
-                    }
-                  },
-                ),
-              );
-            },
-          ),
-        ),
-        if (_cart.isNotEmpty)
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.3),
-                  spreadRadius: 1,
-                  blurRadius: 5,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('العربة (${_cart.length})',
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                    Text(
-                      '${_cartTotal.toStringAsFixed(2)} جنيه',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        color: Colors.green,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () =>
-                            _showCartDetailsMobile(context, repProvider),
-                        icon: const Icon(Icons.shopping_cart),
-                        label: const Text('عرض العربة'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _isSelling ? null : _confirmSell,
-                        icon: const Icon(Icons.check_circle),
-                        label: const Text('إتمام البيع'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-
-  void _showCartDetailsMobile(
-      BuildContext context, RepresentativeProvider repProvider) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.85,
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('عربة التسوق',
-                    style:
-                        TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
-                ),
-              ],
-            ),
-            const Divider(),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    // قائمة المنتجات
-                    ...List.generate(_cart.length, (index) {
-                      final item = _cart[index];
-                      return Card(
-                        child: ListTile(
-                          title: Text(item.product.name),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                  'الكمية: ${item.quantity} × ${item.customPrice.toStringAsFixed(2)}'),
-                              if (item.discount > 0)
-                                Text('خصم: ${item.discount.toStringAsFixed(2)}',
-                                    style: const TextStyle(color: Colors.red)),
-                              Text(
-                                  'الإجمالي: ${item.total.toStringAsFixed(2)} جنيه',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold)),
-                            ],
-                          ),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () {
-                              setState(() {
-                                _removeFromCart(index);
-                              });
-                              Navigator.pop(context);
-                              _showCartDetailsMobile(context, repProvider);
-                            },
-                          ),
-                        ),
-                      );
-                    }),
-
-                    const SizedBox(height: 16),
-
-                    // معلومات البيع
-                    TextField(
-                      controller: _customerNameController,
-                      decoration: const InputDecoration(
-                        labelText: 'اسم العميل *',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.person),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // اختيار المندوب
-                    DropdownButtonFormField<Representative?>(
-                      value: _selectedRepresentative,
-                      decoration: InputDecoration(
-                        labelText: 'اختر المندوب (اختياري)',
-                        border: const OutlineInputBorder(),
-                        prefixIcon: const Icon(Icons.badge, color: Colors.blue),
-                        suffixIcon: _selectedRepresentative != null
-                            ? IconButton(
-                                icon: const Icon(Icons.clear),
-                                onPressed: () {
-                                  setState(() {
-                                    _selectedRepresentative = null;
-                                  });
-                                  Navigator.pop(context);
-                                  _showCartDetailsMobile(context, repProvider);
-                                },
-                              )
-                            : null,
-                      ),
-                      items: [
-                        const DropdownMenuItem(
-                          value: null,
-                          child: Text('بدون مندوب'),
-                        ),
-                        ...repProvider.representatives
-                            .where((r) => r.type == 'مندوب')
-                            .map((rep) => DropdownMenuItem(
-                                  value: rep,
-                                  child: Text(rep.name),
-                                )),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedRepresentative = value;
-                        });
-                        Navigator.pop(context);
-                        _showCartDetailsMobile(context, repProvider);
-                      },
-                    ),
-                    const SizedBox(height: 12),
-
-                    // نوع الدفع
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey[400]!),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'نوع الدفع',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: RadioListTile<String>(
-                                  title: const Text('نقد'),
-                                  value: 'نقد',
-                                  groupValue: _paymentType,
-                                  contentPadding: EdgeInsets.zero,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _paymentType = value!;
-                                    });
-                                    Navigator.pop(context);
-                                    _showCartDetailsMobile(
-                                        context, repProvider);
-                                  },
-                                ),
-                              ),
-                              Expanded(
-                                child: RadioListTile<String>(
-                                  title: const Text('آجل'),
-                                  value: 'آجل',
-                                  groupValue: _paymentType,
-                                  contentPadding: EdgeInsets.zero,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _paymentType = value!;
-                                    });
-                                    Navigator.pop(context);
-                                    _showCartDetailsMobile(
-                                        context, repProvider);
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    TextField(
-                      controller: _notesController,
-                      decoration: const InputDecoration(
-                        labelText: 'ملاحظات',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.note),
-                      ),
-                      maxLines: 2,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('الإجمالي النهائي:',
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold)),
-                      Text(
-                        '${_cartTotal.toStringAsFixed(2)} جنيه',
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showPricesDialog(Product product) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(product.name),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.person),
-              title: const Text('سعر فردي'),
-              trailing: Text('${product.retailPrice.toStringAsFixed(2)} جنيه'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.group),
-              title: const Text('سعر جملة (10+)'),
-              trailing:
-                  Text('${product.wholesalePrice.toStringAsFixed(2)} جنيه'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.groups),
-              title: const Text('سعر جملة الجملة (50+)'),
-              trailing:
-                  Text('${product.bulkWholesalePrice.toStringAsFixed(2)} جنيه'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('إغلاق'),
-          ),
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.pop(context);
-              _showAddToCartDialog(product);
-            },
-            icon: const Icon(Icons.add_shopping_cart),
-            label: const Text('إضافة للعربة'),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ===== قسم العربة المحدّث =====
   Widget _buildCartSection(RepresentativeProvider repProvider) {
-    final paidAmount = double.tryParse(_paidAmountController.text) ??
-        (_paymentType == 'نقد' ? _cartTotal : 0);
-    final remainingAmount = _cartTotal - paidAmount;
     return Column(
       children: [
         Container(
@@ -927,7 +479,7 @@ class _SellProductScreenState extends State<SellProductScreen>
             children: [
               const Icon(Icons.shopping_cart, color: Colors.white),
               const SizedBox(width: 8),
-              Text('عربة التسوق (${_cart.length})',
+              Text('قايمة البيع  (${_cart.length})',
                   style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -1069,262 +621,78 @@ class _SellProductScreenState extends State<SellProductScreen>
                     blurRadius: 5),
               ],
             ),
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  // اسم العميل
-                  TextField(
-                    controller: _customerNameController,
-                    decoration: const InputDecoration(
-                      labelText: 'اسم العميل *',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.person),
-                    ),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  const SizedBox(height: 12),
-
-                  // ===== اختيار المندوب =====
-                  DropdownButtonFormField<Representative?>(
-                    value: _selectedRepresentative,
-                    decoration: InputDecoration(
-                      labelText: 'اختر المندوب (اختياري)',
-                      border: const OutlineInputBorder(),
-                      prefixIcon: const Icon(Icons.badge, color: Colors.blue),
-                      suffixIcon: _selectedRepresentative != null
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                setState(() {
-                                  _selectedRepresentative = null;
-                                });
-                              },
-                            )
-                          : null,
-                    ),
-                    items: [
-                      const DropdownMenuItem(
-                        value: null,
-                        child: Text('بدون مندوب'),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('المجموع الفرعي:'),
+                          Text('${_cartSubtotal.toStringAsFixed(2)} جنيه',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold)),
+                        ],
                       ),
-                      ...repProvider.representatives
-                          .where((r) => r.type == 'مندوب')
-                          .map((rep) => DropdownMenuItem(
-                                value: rep,
-                                child: Text(rep.name),
-                              )),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedRepresentative = value;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 12),
-
-                  // ===== نوع الدفع =====
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey[400]!),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Row(
-                          children: [
-                            Icon(Icons.payment, color: Colors.blue, size: 20),
-                            SizedBox(width: 8),
-                            Text(
-                              'نوع الدفع',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
+                      if (_totalDiscounts > 0) ...[
                         const SizedBox(height: 8),
                         Row(
-                          children: [
-                            Expanded(
-                              child: RadioListTile<String>(
-                                title: const Text('نقد'),
-                                value: 'نقد',
-                                groupValue: _paymentType,
-                                contentPadding: EdgeInsets.zero,
-                                dense: true,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _paymentType = value!;
-                                  });
-                                },
-                              ),
-                            ),
-                            Expanded(
-                              child: RadioListTile<String>(
-                                title: const Text('آجل'),
-                                value: 'آجل',
-                                groupValue: _paymentType,
-                                contentPadding: EdgeInsets.zero,
-                                dense: true,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _paymentType = value!;
-                                  });
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  if (_paymentType == 'آجل' ||
-                      _selectedRepresentative != null) ...[
-                    TextField(
-                      controller: _paidAmountController,
-                      decoration: InputDecoration(
-                        labelText: 'المبلغ المدفوع',
-                        border: const OutlineInputBorder(),
-                        prefixIcon:
-                            const Icon(Icons.payments, color: Colors.green),
-                        suffixText: 'جنيه',
-                        helperText: remainingAmount > 0
-                            ? 'المتبقي: ${remainingAmount.toStringAsFixed(2)} جنيه'
-                            : null,
-                        helperStyle: const TextStyle(
-                          color: Colors.orange,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      keyboardType: TextInputType.number,
-                      onChanged: (value) {
-                        setState(() {}); // لتحديث المتبقي
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-
-                  // الملاحظات
-                  TextField(
-                    controller: _notesController,
-                    decoration: const InputDecoration(
-                      labelText: 'ملاحظات',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.note),
-                    ),
-                    maxLines: 2,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // ملخص المجاميع
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[50],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text('المجموع الفرعي:'),
-                            Text('${_cartSubtotal.toStringAsFixed(2)} جنيه',
+                            const Text('إجمالي الخصومات:'),
+                            Text('${_totalDiscounts.toStringAsFixed(2)} جنيه',
                                 style: const TextStyle(
-                                    fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                        if (_totalDiscounts > 0) ...[
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text('إجمالي الخصومات:'),
-                              Text('${_totalDiscounts.toStringAsFixed(2)} جنيه',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.red)),
-                            ],
-                          ),
-                        ],
-                        const Divider(),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('الإجمالي:',
-                                style: TextStyle(
-                                    fontSize: 18, fontWeight: FontWeight.bold)),
-                            Text('${_cartTotal.toStringAsFixed(2)} جنيه',
-                                style: const TextStyle(
-                                    fontSize: 20,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.green)),
+                                    color: Colors.red)),
                           ],
                         ),
-
-                        // ⭐ عرض المدفوع والمتبقي
-                        if ((_paymentType == 'آجل' ||
-                                _selectedRepresentative != null) &&
-                            paidAmount > 0) ...[
-                          const Divider(),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text('المدفوع:',
-                                  style: TextStyle(color: Colors.green)),
-                              Text('${paidAmount.toStringAsFixed(2)} جنيه',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green)),
-                            ],
-                          ),
-                          if (remainingAmount > 0) ...[
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text('المتبقي:',
-                                    style: TextStyle(color: Colors.orange)),
-                                Text(
-                                    '${remainingAmount.toStringAsFixed(2)} جنيه',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.orange)),
-                              ],
-                            ),
-                          ],
-                        ],
                       ],
-                    ),
+                      const Divider(),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('الإجمالي:',
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold)),
+                          Text('${_cartTotal.toStringAsFixed(2)} جنيه',
+                              style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green)),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-
-                  // زر إتمام البيع
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton.icon(
-                      onPressed: _isSelling ? null : _confirmSell,
-                      icon: _isSelling
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
-                          : const Icon(Icons.check_circle),
-                      label: const Text('إتمام البيع',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold)),
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green),
-                    ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton.icon(
+                    onPressed: _isSelling
+                        ? null
+                        : () => _showCheckoutBottomSheet(repProvider),
+                    icon: _isSelling
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.check_circle),
+                    label: const Text('إتمام البيع',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold)),
+                    style:
+                        ElevatedButton.styleFrom(backgroundColor: Colors.green),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
       ],
@@ -1380,6 +748,377 @@ class _SellProductScreenState extends State<SellProductScreen>
             child: const Text('تطبيق'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showCheckoutBottomSheet(RepresentativeProvider repProvider) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setBottomSheetState) {
+          final paidAmount = double.tryParse(_paidAmountController.text) ?? 0;
+          final remainingAmount = _cartTotal - paidAmount;
+
+          return DraggableScrollableSheet(
+            initialChildSize: 0.75,
+            minChildSize: 0.5,
+            maxChildSize: 0.95,
+            expand: false,
+            builder: (context, scrollController) => SingleChildScrollView(
+              controller: scrollController,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                  left: 16,
+                  right: 16,
+                  top: 16,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Center(
+                      child: Container(
+                        width: 50,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'إتمام عملية البيع',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // نوع العميل
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey[400]!),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'نوع العميل',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: RadioListTile<String>(
+                                  title: const Text('عميل'),
+                                  value: 'عميل',
+                                  groupValue: _clientType,
+                                  contentPadding: EdgeInsets.zero,
+                                  dense: true,
+                                  onChanged: (value) {
+                                    setBottomSheetState(() {
+                                      _clientType = value!;
+                                      _selectedClientId = null;
+                                      _selectedClientName = null;
+                                      _selectedRepresentative = null;
+                                    });
+                                  },
+                                ),
+                              ),
+                              Expanded(
+                                child: RadioListTile<String>(
+                                  title: const Text('مندوب'),
+                                  value: 'مندوب',
+                                  groupValue: _clientType,
+                                  contentPadding: EdgeInsets.zero,
+                                  dense: true,
+                                  onChanged: (value) {
+                                    setBottomSheetState(() {
+                                      _clientType = value!;
+                                      _selectedClientId = null;
+                                      _selectedClientName = null;
+                                      _selectedRepresentative = null;
+                                    });
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // اختيار العميل/المندوب
+                    DropdownSearch<Representative>(
+                      items: repProvider.representatives
+                          .where((r) => r.type == _clientType)
+                          .toList(),
+                      selectedItem: _selectedRepresentative,
+                      itemAsString: (rep) => rep.name,
+                      dropdownDecoratorProps: DropDownDecoratorProps(
+                        dropdownSearchDecoration: InputDecoration(
+                          labelText: _clientType == 'عميل'
+                              ? 'اختر العميل *'
+                              : 'اختر المندوب *',
+                          border: const OutlineInputBorder(),
+                          prefixIcon: Icon(
+                            _clientType == 'عميل' ? Icons.person : Icons.badge,
+                            color: Colors.blue,
+                          ),
+                        ),
+                      ),
+                      popupProps: PopupProps.menu(
+                        showSearchBox: true,
+                        searchFieldProps: const TextFieldProps(
+                          decoration: InputDecoration(
+                            hintText: 'ابحث...',
+                            prefixIcon: Icon(Icons.search),
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        emptyBuilder: (context, searchEntry) => const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(20),
+                            child: Text('لا توجد نتائج'),
+                          ),
+                        ),
+                      ),
+                      onChanged: (rep) {
+                        setBottomSheetState(() {
+                          _selectedRepresentative = rep;
+                          _selectedClientId = rep?.id.toString();
+                          _selectedClientName = rep?.name;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    // نوع الدفع
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey[400]!),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.payment, color: Colors.blue, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'نوع الدفع',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: RadioListTile<String>(
+                                  title: const Text('نقد'),
+                                  value: 'نقد',
+                                  groupValue: _paymentType,
+                                  contentPadding: EdgeInsets.zero,
+                                  dense: true,
+                                  onChanged: (value) {
+                                    setBottomSheetState(() {
+                                      _paymentType = value!;
+                                      _paidAmountController.clear();
+                                    });
+                                  },
+                                ),
+                              ),
+                              Expanded(
+                                child: RadioListTile<String>(
+                                  title: const Text('آجل'),
+                                  value: 'آجل',
+                                  groupValue: _paymentType,
+                                  contentPadding: EdgeInsets.zero,
+                                  dense: true,
+                                  onChanged: (value) {
+                                    setBottomSheetState(() {
+                                      _paymentType = value!;
+                                    });
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // حقل المبلغ المدفوع (يظهر فقط للآجل)
+                    if (_paymentType == 'آجل') ...[
+                      TextField(
+                        controller: _paidAmountController,
+                        decoration: InputDecoration(
+                          labelText: 'المبلغ المدفوع',
+                          border: const OutlineInputBorder(),
+                          prefixIcon:
+                              const Icon(Icons.payments, color: Colors.green),
+                          suffixText: 'جنيه',
+                          helperText: remainingAmount > 0
+                              ? 'المتبقي: ${remainingAmount.toStringAsFixed(2)} جنيه'
+                              : null,
+                          helperStyle: const TextStyle(
+                            color: Colors.orange,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        keyboardType: TextInputType.number,
+                        onChanged: (value) {
+                          setBottomSheetState(() {});
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
+                    // ملاحظات
+                    TextField(
+                      controller: _notesController,
+                      decoration: const InputDecoration(
+                        labelText: 'ملاحظات',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.note),
+                      ),
+                      maxLines: 2,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // ملخص الفاتورة
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue[50],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('المجموع الفرعي:'),
+                              Text('${_cartSubtotal.toStringAsFixed(2)} جنيه',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          if (_totalDiscounts > 0) ...[
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('إجمالي الخصومات:'),
+                                Text(
+                                    '${_totalDiscounts.toStringAsFixed(2)} جنيه',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.red)),
+                              ],
+                            ),
+                          ],
+                          const Divider(),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('الإجمالي:',
+                                  style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold)),
+                              Text('${_cartTotal.toStringAsFixed(2)} جنيه',
+                                  style: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green)),
+                            ],
+                          ),
+                          if (_paymentType == 'آجل' && paidAmount > 0) ...[
+                            const Divider(),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('المدفوع:',
+                                    style: TextStyle(color: Colors.green)),
+                                Text('${paidAmount.toStringAsFixed(2)} جنيه',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.green)),
+                              ],
+                            ),
+                            if (remainingAmount > 0) ...[
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text('المتبقي:',
+                                      style: TextStyle(color: Colors.orange)),
+                                  Text(
+                                      '${remainingAmount.toStringAsFixed(2)} جنيه',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.orange)),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // زر التأكيد
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        onPressed: _isSelling
+                            ? null
+                            : () {
+                                Navigator.pop(context);
+                                _confirmSell();
+                              },
+                        icon: _isSelling
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white))
+                            : const Icon(Icons.check_circle),
+                        label: const Text('تأكيد وإتمام البيع',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -1467,9 +1206,9 @@ class _SellProductScreenState extends State<SellProductScreen>
           .showSnackBar(const SnackBar(content: Text('العربة فارغة')));
       return;
     }
-    if (_customerNameController.text.isEmpty) {
+    if (_selectedClientName == null || _selectedClientName!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('الرجاء إدخال اسم العميل')));
+          SnackBar(content: Text('الرجاء اختيار ${_clientType}')));
       return;
     }
 
@@ -1482,7 +1221,7 @@ class _SellProductScreenState extends State<SellProductScreen>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('العميل: ${_customerNameController.text}',
+              Text('العميل: ${_selectedClientName!}',
                   style: const TextStyle(
                       fontWeight: FontWeight.bold, fontSize: 16)),
               if (_selectedRepresentative != null) ...[
@@ -1598,7 +1337,7 @@ class _SellProductScreenState extends State<SellProductScreen>
       notesBase += 'فاتورة: $invoiceNumber';
 
       if (_selectedRepresentative != null) {
-        notesBase += ' | مندوب: ${_selectedRepresentative!.name}';
+        notesBase += ' | $_clientType: $_selectedClientName';
       }
       notesBase += ' | دفع: $_paymentType';
       if (paidAmount > 0 && paidAmount < _cartTotal) {
@@ -1612,7 +1351,7 @@ class _SellProductScreenState extends State<SellProductScreen>
         await productProvider.sellProductWithCustomPrice(
           item.product,
           item.quantity,
-          _customerNameController.text,
+          _selectedClientName!,
           finalPricePerUnit,
           notesBase,
         );
@@ -1658,7 +1397,7 @@ class _SellProductScreenState extends State<SellProductScreen>
       final invoice = Invoice(
         invoiceNumber: invoiceNumber,
         invoiceDate: DateTime.now(),
-        customerName: _customerNameController.text,
+        customerName: _selectedClientName!,
         items: invoiceItems,
         tax: 0,
         discount: _totalDiscounts,
@@ -2333,6 +2072,18 @@ class _SellProductScreenState extends State<SellProductScreen>
               onPressed: () async {
                 bool hasReturns = false;
                 bool hasErrors = false;
+                double totalReturnAmount = 0; // ⭐ إجمالي قيمة المرتجعات
+                String returnedProducts = ''; // ⭐ ملخص المنتجات المرتجعة
+
+                // ⭐ استخراج معلومات المندوب/العميل من الفاتورة
+                final firstSale = sales.first;
+                final invoiceNumber = _extractInvoiceNumber(firstSale.notes);
+
+                // البحث عن المندوب أو العميل من الملاحظات
+                final clientMatch = RegExp(r'(عميل|مندوب):\s*([^|]+)')
+                    .firstMatch(firstSale.notes ?? '');
+                final clientType = clientMatch?.group(1)?.trim();
+                final clientName = clientMatch?.group(2)?.trim();
 
                 for (var sale in sales) {
                   final quantity =
@@ -2365,6 +2116,15 @@ class _SellProductScreenState extends State<SellProductScreen>
                     }
 
                     hasReturns = true;
+
+                    // ⭐ حساب قيمة المرتجع
+                    final returnValue = sale.unitPrice * quantity;
+                    totalReturnAmount += returnValue;
+
+                    // ⭐ إضافة للملخص
+                    if (returnedProducts.isNotEmpty) returnedProducts += ', ';
+                    returnedProducts += '${sale.productName} ($quantity)';
+
                     try {
                       await provider.returnSale(sale.id, quantity, reason);
                     } catch (e) {
@@ -2380,6 +2140,47 @@ class _SellProductScreenState extends State<SellProductScreen>
                   }
                 }
 
+                // ⭐⭐⭐ تسجيل المرتجع في حساب المندوب/العميل ⭐⭐⭐
+                if (hasReturns &&
+                    !hasErrors &&
+                    clientName != null &&
+                    totalReturnAmount > 0) {
+                  final repProvider = Provider.of<RepresentativeProvider>(
+                      context,
+                      listen: false);
+
+                  // البحث عن المندوب/العميل بالاسم
+                  final representative = repProvider.representatives.firstWhere(
+                    (r) => r.name == clientName && r.type == clientType,
+                    orElse: () => Representative(
+                      name: '',
+                      type: 'عميل',
+                      totalDebt: 0,
+                      totalPaid: 0,
+                    ),
+                  );
+
+                  if (representative.id != null) {
+                    // تسجيل المرتجع كمعاملة
+                    final success = await repProvider.recordReturn(
+                      representativeId: representative.id!,
+                      returnAmount: totalReturnAmount,
+                      productsSummary: returnedProducts,
+                      invoiceNumber: invoiceNumber,
+                      notes: 'استرجاع من فاتورة $invoiceNumber',
+                    );
+
+                    if (success) {
+                      debugPrint('✅ تم تسجيل المرتجع في حساب $clientName');
+                      debugPrint(
+                          '   - قيمة المرتجع: ${totalReturnAmount.toStringAsFixed(2)}');
+                      debugPrint('   - المنتجات: $returnedProducts');
+                    } else {
+                      debugPrint('❌ فشل تسجيل المرتجع في حساب $clientName');
+                    }
+                  }
+                }
+
                 if (!hasErrors) {
                   Navigator.pop(context);
                 }
@@ -2387,10 +2188,20 @@ class _SellProductScreenState extends State<SellProductScreen>
                 if (hasReturns && !hasErrors) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('تم استرجاع المنتجات بنجاح'),
+                      content:
+                          Text('تم استرجاع المنتجات بنجاح وتحديث الحساب ✅'),
                       backgroundColor: Colors.green,
                     ),
                   );
+
+                  // ⭐⭐⭐ تحديث البيانات
+                  final repProvider = Provider.of<RepresentativeProvider>(
+                      context,
+                      listen: false);
+                  await repProvider.loadRepresentatives();
+                  await provider.fetchSales();
+                  await provider.refreshInventoryTransactions();
+
                   setState(() {});
                 } else if (!hasReturns && !hasErrors) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -2538,8 +2349,21 @@ class _SellProductScreenState extends State<SellProductScreen>
 
                       try {
                         final customerName = sales.first.customerName;
+
+                        // ⭐⭐⭐ استخراج معلومات المندوب/العميل من الفاتورة الأصلية
+                        final firstSale = sales.first;
+                        final clientMatch = RegExp(r'(عميل|مندوب):\s*([^|]+)')
+                            .firstMatch(firstSale.notes ?? '');
+                        final clientType = clientMatch?.group(1)?.trim();
+                        final clientName = clientMatch?.group(2)?.trim();
+                        final paymentMatch = RegExp(r'دفع:\s*([^|]+)')
+                            .firstMatch(firstSale.notes ?? '');
+                        final paymentType =
+                            paymentMatch?.group(1)?.trim() ?? 'نقد';
+
                         final notes = 'فاتورة: $invoiceNumber';
 
+                        // بيع المنتج
                         await provider.sellProductWithCustomPrice(
                           selectedProduct!,
                           quantity,
@@ -2548,20 +2372,66 @@ class _SellProductScreenState extends State<SellProductScreen>
                           notes,
                         );
 
+                        // ⭐⭐⭐ تحديث حساب المندوب/العميل
+                        if (clientName != null &&
+                            clientType != null &&
+                            paymentType == 'آجل') {
+                          final repProvider =
+                              Provider.of<RepresentativeProvider>(context,
+                                  listen: false);
+
+                          final representative =
+                              repProvider.representatives.firstWhere(
+                            (r) => r.name == clientName && r.type == clientType,
+                            orElse: () => Representative(
+                                name: '',
+                                type: 'عميل',
+                                totalDebt: 0,
+                                totalPaid: 0),
+                          );
+
+                          if (representative.id != null) {
+                            final addedAmount = price * quantity;
+
+                            final success =
+                                await repProvider.recordDeferredSale(
+                              representativeId: representative.id!,
+                              totalAmount: addedAmount,
+                              paidAmount: 0, // لأنه آجل
+                              productsSummary:
+                                  '${selectedProduct!.name} ($quantity)',
+                              invoiceNumber: invoiceNumber,
+                              notes: 'إضافة منتج للفاتورة',
+                            );
+
+                            if (success) {
+                              debugPrint(
+                                  '✅ تم تحديث حساب $clientName بإضافة $addedAmount جنيه');
+                            }
+                          }
+                        }
+
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('تمت إضافة المنتج للفاتورة بنجاح'),
+                            content: Text(
+                                'تمت إضافة المنتج للفاتورة وتحديث الحساب بنجاح'),
                             backgroundColor: Colors.green,
                           ),
                         );
+
+                        // ⭐ تحديث صفحة المندوبين
+                        final repProvider = Provider.of<RepresentativeProvider>(
+                            context,
+                            listen: false);
+                        await repProvider.loadRepresentatives();
+
                         setState(() {});
                       } catch (e) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('خطأ: $e'),
-                            backgroundColor: Colors.red,
-                          ),
+                              content: Text('خطأ: $e'),
+                              backgroundColor: Colors.red),
                         );
                       }
                     },

@@ -25,18 +25,38 @@ class _RepresentativeDetailsScreenState
   List<RepresentativeTransaction> _transactions = [];
   bool _isLoading = true;
 
+  // ⭐⭐⭐ متغير جديد لحفظ بيانات المندوب المحدثة
+  late Representative _currentRepresentative;
+
   @override
   void initState() {
     super.initState();
-    _loadTransactions();
+    _currentRepresentative = widget.representative;
+    _loadData();
   }
 
-  Future<void> _loadTransactions() async {
+  // ⭐⭐⭐ دالة جديدة لتحديث كل البيانات
+  Future<void> _loadData() async {
     setState(() => _isLoading = true);
+
     final provider =
         Provider.of<RepresentativeProvider>(context, listen: false);
+
+    // 1️⃣ تحديث بيانات جميع المندوبين
+    await provider.loadRepresentatives();
+
+    // 2️⃣ جلب بيانات المندوب المحدثة من الـ provider
+    final updatedRep =
+        provider.getRepresentativeById(widget.representative.id!);
+
+    if (updatedRep != null) {
+      _currentRepresentative = updatedRep;
+    }
+
+    // 3️⃣ جلب المعاملات
     final transactions =
         await provider.getTransactions(widget.representative.id!);
+
     setState(() {
       _transactions = transactions;
       _isLoading = false;
@@ -47,11 +67,15 @@ class _RepresentativeDetailsScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.representative.name),
+        title: Text(_currentRepresentative.name),
         centerTitle: true,
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadData, // ⭐ زر تحديث يدوي
+          ),
           IconButton(
             icon: const Icon(Icons.edit),
             onPressed: () async {
@@ -59,11 +83,12 @@ class _RepresentativeDetailsScreenState
                 context,
                 MaterialPageRoute(
                   builder: (context) => AddRepresentativeScreen(
-                    representative: widget.representative,
+                    representative: _currentRepresentative,
                   ),
                 ),
               );
               if (result == true && mounted) {
+                await _loadData(); // ⭐ تحديث البيانات
                 Navigator.pop(context, true);
               }
             },
@@ -75,28 +100,28 @@ class _RepresentativeDetailsScreenState
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: _loadTransactions,
-        child: Column(
-          children: [
-            _buildAccountSummary(),
-            _buildActionButtons(),
-            const Divider(height: 1),
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _transactions.isEmpty
-                      ? _buildEmptyState()
-                      : _buildTransactionsList(),
-            ),
-          ],
-        ),
+        onRefresh: _loadData, // ⭐ تحديث بالسحب لأسفل
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                children: [
+                  _buildAccountSummary(),
+                  _buildActionButtons(),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: _transactions.isEmpty
+                        ? _buildEmptyState()
+                        : _buildTransactionsList(),
+                  ),
+                ],
+              ),
       ),
     );
   }
 
   Widget _buildAccountSummary() {
     final numberFormat = NumberFormat('#,##0.00', 'ar');
-    final hasDebt = widget.representative.hasDebt;
+    final hasDebt = _currentRepresentative.hasDebt;
 
     return Card(
       margin: const EdgeInsets.all(16),
@@ -108,22 +133,22 @@ class _RepresentativeDetailsScreenState
           children: [
             CircleAvatar(
               radius: 40,
-              backgroundColor: widget.representative.type == 'مندوب'
+              backgroundColor: _currentRepresentative.type == 'مندوب'
                   ? Colors.blue.shade100
                   : Colors.green.shade100,
               child: Icon(
-                widget.representative.type == 'مندوب'
+                _currentRepresentative.type == 'مندوب'
                     ? Icons.person
                     : Icons.people,
                 size: 48,
-                color: widget.representative.type == 'مندوب'
+                color: _currentRepresentative.type == 'مندوب'
                     ? Colors.blue
                     : Colors.green,
               ),
             ),
             const SizedBox(height: 16),
             Text(
-              widget.representative.name,
+              _currentRepresentative.name,
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -131,12 +156,12 @@ class _RepresentativeDetailsScreenState
             ),
             const SizedBox(height: 4),
             Chip(
-              label: Text(widget.representative.type),
-              backgroundColor: widget.representative.type == 'مندوب'
+              label: Text(_currentRepresentative.type),
+              backgroundColor: _currentRepresentative.type == 'مندوب'
                   ? Colors.blue.shade100
                   : Colors.green.shade100,
             ),
-            if (widget.representative.phone != null) ...[
+            if (_currentRepresentative.phone != null) ...[
               const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -144,7 +169,7 @@ class _RepresentativeDetailsScreenState
                   const Icon(Icons.phone, size: 16, color: Colors.grey),
                   const SizedBox(width: 4),
                   Text(
-                    widget.representative.phone!,
+                    _currentRepresentative.phone!,
                     style: const TextStyle(color: Colors.grey),
                   ),
                 ],
@@ -156,12 +181,12 @@ class _RepresentativeDetailsScreenState
               children: [
                 _buildSummaryItem(
                   'إجمالي الديون',
-                  '${numberFormat.format(widget.representative.totalDebt)} جنيه',
+                  '${numberFormat.format(_currentRepresentative.totalDebt)} جنيه',
                   Colors.orange,
                 ),
                 _buildSummaryItem(
                   'إجمالي المدفوع',
-                  '${numberFormat.format(widget.representative.totalPaid)} جنيه',
+                  '${numberFormat.format(_currentRepresentative.totalPaid)} جنيه',
                   Colors.green,
                 ),
               ],
@@ -184,7 +209,7 @@ class _RepresentativeDetailsScreenState
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${numberFormat.format(widget.representative.remainingDebt)} جنيه',
+                    '${numberFormat.format(_currentRepresentative.remainingDebt)} جنيه',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 32,
@@ -237,21 +262,18 @@ class _RepresentativeDetailsScreenState
         children: [
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: widget.representative.hasDebt
+              onPressed: _currentRepresentative.hasDebt
                   ? () async {
                       final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => AddPaymentScreen(
-                            representative: widget.representative,
+                            representative: _currentRepresentative,
                           ),
                         ),
                       );
                       if (result == true && mounted) {
-                        await _loadTransactions();
-                        Provider.of<RepresentativeProvider>(context,
-                                listen: false)
-                            .loadRepresentatives();
+                        await _loadData(); // ⭐ تحديث البيانات
                       }
                     }
                   : null,
@@ -485,7 +507,7 @@ class _RepresentativeDetailsScreenState
       builder: (context) => AlertDialog(
         title: const Text('تأكيد الحذف'),
         content: Text(
-          'هل أنت متأكد من حذف ${widget.representative.name}؟\nسيتم حذف جميع المعاملات المرتبطة.',
+          'هل أنت متأكد من حذف ${_currentRepresentative.name}؟\nسيتم حذف جميع المعاملات المرتبطة.',
         ),
         actions: [
           TextButton(
@@ -498,7 +520,7 @@ class _RepresentativeDetailsScreenState
               final provider =
                   Provider.of<RepresentativeProvider>(context, listen: false);
               final success = await provider
-                  .deleteRepresentative(widget.representative.id!);
+                  .deleteRepresentative(_currentRepresentative.id!);
               if (success && mounted) {
                 Navigator.pop(context, true);
                 ScaffoldMessenger.of(context).showSnackBar(

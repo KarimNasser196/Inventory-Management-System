@@ -1,11 +1,12 @@
-// lib/models/maintenance_record.dart (نسخة مبسطة)
+// lib/models/maintenance_record.dart (محدث مع رقم الهاتف)
 
 import 'dart:math';
 
 class MaintenanceRecord {
   int? id;
-  String deviceType; // نوع الجهاز (يحدده المستخدم)
+  String deviceType; // نوع الجهاز
   String customerName; // اسم العميل
+  String customerPhone; // رقم هاتف العميل
   String problemDescription; // وصف المشكلة
   String status; // الحالة: "قيد الإصلاح", "جاهز للاستلام", "تم التسليم", "ملغي"
   double cost; // التكلفة
@@ -18,6 +19,7 @@ class MaintenanceRecord {
     this.id,
     required this.deviceType,
     required this.customerName,
+    required this.customerPhone,
     required this.problemDescription,
     this.status = 'قيد الإصلاح',
     this.cost = 0,
@@ -25,8 +27,8 @@ class MaintenanceRecord {
     DateTime? receivedDate,
     this.deliveryDate,
     String? repairCode,
-  }) : receivedDate = receivedDate ?? DateTime.now(),
-       repairCode = repairCode ?? _generateRepairCode();
+  })  : receivedDate = receivedDate ?? DateTime.now(),
+        repairCode = repairCode ?? _generateRepairCode();
 
   // توليد كود صيانة عشوائي مكون من 6 أرقام
   static String _generateRepairCode() {
@@ -69,6 +71,8 @@ class MaintenanceRecord {
       id: map['id'] as int?,
       deviceType: map['deviceType'] as String,
       customerName: map['customerName'] as String,
+      customerPhone:
+          map['customerPhone'] as String? ?? '', // دعم السجلات القديمة
       problemDescription: map['problemDescription'] as String,
       status: map['status'] as String,
       cost: (map['cost'] as num).toDouble(),
@@ -84,6 +88,7 @@ class MaintenanceRecord {
       'id': id,
       'deviceType': deviceType,
       'customerName': customerName,
+      'customerPhone': customerPhone,
       'problemDescription': problemDescription,
       'status': status,
       'cost': cost,
@@ -98,6 +103,7 @@ class MaintenanceRecord {
     int? id,
     String? deviceType,
     String? customerName,
+    String? customerPhone,
     String? problemDescription,
     String? status,
     double? cost,
@@ -110,6 +116,7 @@ class MaintenanceRecord {
       id: id ?? this.id,
       deviceType: deviceType ?? this.deviceType,
       customerName: customerName ?? this.customerName,
+      customerPhone: customerPhone ?? this.customerPhone,
       problemDescription: problemDescription ?? this.problemDescription,
       status: status ?? this.status,
       cost: cost ?? this.cost,

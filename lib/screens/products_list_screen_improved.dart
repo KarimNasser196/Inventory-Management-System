@@ -958,7 +958,9 @@ class _ProductsListScreenUpdatedState extends State<ProductsListScreenUpdated> {
     );
   }
 
-  void _navigateToAddProduct(BuildContext context) async {
+  void _navigateToAddProduct(
+    BuildContext context,
+  ) async {
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const AddProductScreenUpdated()),
@@ -975,6 +977,9 @@ class _ProductsListScreenUpdatedState extends State<ProductsListScreenUpdated> {
   }
 
   void _navigateToEditProduct(BuildContext context, Product product) async {
+    // Save the provider reference before any async operations
+    final productProvider = context.read<ProductProvider>();
+
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -982,14 +987,14 @@ class _ProductsListScreenUpdatedState extends State<ProductsListScreenUpdated> {
       ),
     );
 
-    // إعادة تحميل الخيارات والمنتجات بعد الرجوع
-    if (mounted) {
-      await _loadFilterOptions();
-      // تحديث قائمة المنتجات من الـ provider
-      if (mounted) {
-        Provider.of<ProductProvider>(context, listen: false).products;
-      }
-    }
+    if (!mounted) return;
+
+    await _loadFilterOptions();
+
+    if (!mounted) return;
+
+    // Use the saved reference instead of accessing context again
+    productProvider.products;
   }
 
   void _confirmDelete(BuildContext context, Product product) async {

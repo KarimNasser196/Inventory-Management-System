@@ -90,7 +90,8 @@ class DashboardScreen extends StatelessWidget {
                         () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const ManageCategoriesScreen(),
+                            builder: (context) =>
+                                const ManageCategoriesScreen(),
                           ),
                         ),
                       ),
@@ -120,7 +121,7 @@ class DashboardScreen extends StatelessWidget {
                       ),
                       _buildQuickActionCard(
                         context,
-                        'استرجاع',
+                        'المرتجعات',
                         Icons.reply,
                         Colors.orange,
                         () => _navigateToScreen(context, 3),
@@ -134,7 +135,7 @@ class DashboardScreen extends StatelessWidget {
                       ),
                       _buildQuickActionCard(
                         context,
-                        'المندوبين',
+                        'المندوبين و العملاء',
                         Icons.people,
                         Colors.indigo,
                         () => Navigator.push(
@@ -152,7 +153,8 @@ class DashboardScreen extends StatelessWidget {
                         () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const ManageCategoriesScreen(),
+                            builder: (context) =>
+                                const ManageCategoriesScreen(),
                           ),
                         ),
                       ),
