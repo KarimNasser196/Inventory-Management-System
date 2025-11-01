@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:soundtry/screens/add_product_screen.dart';
@@ -61,7 +62,9 @@ class _ProductsListScreenUpdatedState extends State<ProductsListScreenUpdated> {
         });
       }
     } catch (e) {
-      print('Error loading filter options: $e');
+      if (kDebugMode) {
+        print('Error loading filter options: $e');
+      }
     }
   }
 
@@ -101,18 +104,17 @@ class _ProductsListScreenUpdatedState extends State<ProductsListScreenUpdated> {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 600;
     return Scaffold(
       body: Column(
         children: [
           // Search bar, filters and Add button
           Container(
-            padding: EdgeInsets.all(isMobile ? 16 : 24),
-            decoration: BoxDecoration(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
+                  color: Colors.grey,
                   spreadRadius: 1,
                   blurRadius: 5,
                 ),
@@ -228,7 +230,7 @@ class _ProductsListScreenUpdatedState extends State<ProductsListScreenUpdated> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String?>(
-                        value: _selectedCategoryFilter,
+                        initialValue: _selectedCategoryFilter,
                         decoration: InputDecoration(
                           labelText: 'تصفية حسب الصنف',
                           prefixIcon: const Icon(Icons.category),
@@ -264,7 +266,7 @@ class _ProductsListScreenUpdatedState extends State<ProductsListScreenUpdated> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<String?>(
-                        value: _selectedWarehouseFilter,
+                        initialValue: _selectedWarehouseFilter,
                         decoration: InputDecoration(
                           labelText: 'تصفية حسب المخزن',
                           prefixIcon: const Icon(Icons.warehouse),
@@ -300,7 +302,7 @@ class _ProductsListScreenUpdatedState extends State<ProductsListScreenUpdated> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<String?>(
-                        value: _selectedSupplierFilter,
+                        initialValue: _selectedSupplierFilter,
                         decoration: InputDecoration(
                           labelText: 'تصفية حسب المورد',
                           prefixIcon: const Icon(Icons.store),
@@ -380,8 +382,8 @@ class _ProductsListScreenUpdatedState extends State<ProductsListScreenUpdated> {
                 }
 
                 return _viewMode == ViewMode.cards
-                    ? _buildProductsGrid(context, filteredProducts, isMobile)
-                    : _buildProductsTable(context, filteredProducts, isMobile);
+                    ? _buildProductsTable(context, filteredProducts)
+                    : _buildProductsGrid(context, filteredProducts);
               },
             ),
           ),
@@ -393,16 +395,15 @@ class _ProductsListScreenUpdatedState extends State<ProductsListScreenUpdated> {
   Widget _buildProductsGrid(
     BuildContext context,
     List<Product> products,
-    bool isMobile,
   ) {
     return SingleChildScrollView(
-      padding: EdgeInsets.all(isMobile ? 16 : 24),
+      padding: const EdgeInsets.all(24),
       child: Wrap(
         spacing: 16,
         runSpacing: 16,
         children: products.map((product) {
           return SizedBox(
-            width: isMobile ? double.infinity : 380,
+            width: 380,
             child: _buildProductCard(context, product),
           );
         }).toList(),
@@ -413,16 +414,15 @@ class _ProductsListScreenUpdatedState extends State<ProductsListScreenUpdated> {
   Widget _buildProductsTable(
     BuildContext context,
     List<Product> products,
-    bool isMobile,
   ) {
     return SingleChildScrollView(
-      padding: EdgeInsets.all(isMobile ? 16 : 24),
+      padding: const EdgeInsets.all(24),
       child: Card(
         elevation: 4,
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: DataTable(
-            headingRowColor: MaterialStateProperty.all(Colors.blue[50]),
+            headingRowColor: WidgetStateProperty.all(Colors.blue[50]),
             columns: const [
               DataColumn(label: Text('الاسم')),
               DataColumn(label: Text('الصنف')),
@@ -814,12 +814,12 @@ class _ProductsListScreenUpdatedState extends State<ProductsListScreenUpdated> {
                       valueColor: Colors.blue[700],
                     ),
                     _buildDetailItem(
-                      'سعر الجملة (10+)',
+                      'سعر الجملة ',
                       '${product.wholesalePrice.toStringAsFixed(2)} جنيه',
                       valueColor: Colors.green[700],
                     ),
                     _buildDetailItem(
-                      'سعر جملة الجملة (50+)',
+                      'سعر جملة الجملة ',
                       '${product.bulkWholesalePrice.toStringAsFixed(2)} جنيه',
                       valueColor: Colors.orange[700],
                     ),

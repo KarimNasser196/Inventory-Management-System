@@ -161,7 +161,7 @@ class _AddMaintenanceScreenState extends State<AddMaintenanceScreen> {
                   // الحالة
                   _buildSection('الحالة', Icons.flag, Colors.purple, [
                     DropdownButtonFormField<String>(
-                      value: _selectedStatus,
+                      initialValue: _selectedStatus,
                       decoration: const InputDecoration(
                         labelText: 'الحالة',
                         border: OutlineInputBorder(),

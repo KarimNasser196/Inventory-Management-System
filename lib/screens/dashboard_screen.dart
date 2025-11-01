@@ -208,65 +208,6 @@ class DashboardScreen extends StatelessWidget {
                       );
               },
             ),
-            const SizedBox(height: 24),
-            Text(
-              'آخر المبيعات',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontSize: isMobile ? 20 : 24),
-            ),
-            const SizedBox(height: 16),
-            Consumer<ProductProvider>(
-              builder: (context, provider, _) {
-                final recentSales = provider.getRecentSales();
-                if (recentSales.isEmpty) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Text('لا توجد مبيعات حديثة'),
-                    ),
-                  );
-                }
-                return ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: recentSales.length,
-                  itemBuilder: (context, index) {
-                    final sale = recentSales[index];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      elevation: 4,
-                      child: InkWell(
-                        onTap: () {}, // يمكن إضافة تفاصيل المبيعة هنا
-                        onHover: (isHovering) {
-                          // تأثير Hover للـ Desktop
-                        },
-                        child: ListTile(
-                          leading: const CircleAvatar(
-                            backgroundColor: Colors.green,
-                            child: Icon(
-                              Icons.shopping_cart,
-                              color: Colors.white,
-                            ),
-                          ),
-                          title: Text(sale.productName),
-                          subtitle: Text(
-                            '${sale.customerName} • ${sale.getFormattedDateTime()}',
-                          ),
-                          trailing: Text(
-                            '${sale.totalAmount.toStringAsFixed(2)} جنيه',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
           ],
         ),
       ),

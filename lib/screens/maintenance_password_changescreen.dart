@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/password_service.dart';
-import '../widgets/password_dialog.dart';
 
 class MaintenancePasswordChangeScreen extends StatefulWidget {
   const MaintenancePasswordChangeScreen({super.key});
@@ -289,31 +288,6 @@ class _MaintenancePasswordChangeScreenState
                   ),
 
                   const SizedBox(height: 24),
-
-                  // Info Card
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[50],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.blue[200]!),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline, color: Colors.blue[700]),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'كلمة السر الافتراضية للصيانة: 1234',
-                            style: TextStyle(
-                              color: Colors.blue[700],
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 ],
               ),
             ),

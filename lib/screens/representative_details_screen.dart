@@ -1,4 +1,4 @@
-// lib/screens/representative_details_screen.dart
+// lib/screens/representative_details_screen.dart - نسخة Responsive
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -7,13 +7,13 @@ import 'package:soundtry/models/representative_transaction.dart';
 import 'package:soundtry/providers/representative_provider.dart';
 import 'package:soundtry/screens/add_representative_screen.dart';
 import 'package:soundtry/screens/add_payment_screen.dart';
+import 'package:soundtry/utils/responsive.dart';
 import 'package:intl/intl.dart';
 
 class RepresentativeDetailsScreen extends StatefulWidget {
   final Representative representative;
 
-  const RepresentativeDetailsScreen({Key? key, required this.representative})
-      : super(key: key);
+  const RepresentativeDetailsScreen({super.key, required this.representative});
 
   @override
   State<RepresentativeDetailsScreen> createState() =>
@@ -24,8 +24,6 @@ class _RepresentativeDetailsScreenState
     extends State<RepresentativeDetailsScreen> {
   List<RepresentativeTransaction> _transactions = [];
   bool _isLoading = true;
-
-  // ⭐⭐⭐ متغير جديد لحفظ بيانات المندوب المحدثة
   late Representative _currentRepresentative;
 
   @override
@@ -35,17 +33,20 @@ class _RepresentativeDetailsScreenState
     _loadData();
   }
 
-  // ⭐⭐⭐ دالة جديدة لتحديث كل البيانات
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    Responsive.init(context);
+  }
+
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
 
     final provider =
         Provider.of<RepresentativeProvider>(context, listen: false);
 
-    // 1️⃣ تحديث بيانات جميع المندوبين
     await provider.loadRepresentatives();
 
-    // 2️⃣ جلب بيانات المندوب المحدثة من الـ provider
     final updatedRep =
         provider.getRepresentativeById(widget.representative.id!);
 
@@ -53,7 +54,6 @@ class _RepresentativeDetailsScreenState
       _currentRepresentative = updatedRep;
     }
 
-    // 3️⃣ جلب المعاملات
     final transactions =
         await provider.getTransactions(widget.representative.id!);
 
@@ -67,17 +67,20 @@ class _RepresentativeDetailsScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_currentRepresentative.name),
+        title: Text(
+          _currentRepresentative.name,
+          style: TextStyle(fontSize: Responsive.font(18)),
+        ),
         centerTitle: true,
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData, // ⭐ زر تحديث يدوي
+            icon: Icon(Icons.refresh, size: Responsive.icon(22)),
+            onPressed: _loadData,
           ),
           IconButton(
-            icon: const Icon(Icons.edit),
+            icon: Icon(Icons.edit, size: Responsive.icon(22)),
             onPressed: () async {
               final result = await Navigator.push(
                 context,
@@ -88,26 +91,26 @@ class _RepresentativeDetailsScreenState
                 ),
               );
               if (result == true && mounted) {
-                await _loadData(); // ⭐ تحديث البيانات
+                await _loadData();
                 Navigator.pop(context, true);
               }
             },
           ),
           IconButton(
-            icon: const Icon(Icons.delete),
+            icon: Icon(Icons.delete, size: Responsive.icon(22)),
             onPressed: _confirmDelete,
           ),
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: _loadData, // ⭐ تحديث بالسحب لأسفل
+        onRefresh: _loadData,
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : Column(
                 children: [
-                  _buildAccountSummary(),
+                  _buildCompactAccountSummary(),
                   _buildActionButtons(),
-                  const Divider(height: 1),
+                  Divider(height: Responsive.height(1), thickness: 1),
                   Expanded(
                     child: _transactions.isEmpty
                         ? _buildEmptyState()
@@ -119,112 +122,180 @@ class _RepresentativeDetailsScreenState
     );
   }
 
-  Widget _buildAccountSummary() {
+  // ملخص الحساب مضغوط
+  Widget _buildCompactAccountSummary() {
     final numberFormat = NumberFormat('#,##0.00', 'ar');
     final hasDebt = _currentRepresentative.hasDebt;
 
-    return Card(
-      margin: const EdgeInsets.all(16),
-      elevation: 4,
-      color: hasDebt ? Colors.red.shade50 : Colors.green.shade50,
+    return Container(
+      margin: Responsive.paddingAll(12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: hasDebt
+              ? [Colors.red.shade50, Colors.red.shade100]
+              : [Colors.green.shade50, Colors.green.shade100],
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+        ),
+        borderRadius: BorderRadius.circular(Responsive.radius(12)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade300,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: Responsive.paddingAll(16),
         child: Column(
           children: [
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: _currentRepresentative.type == 'مندوب'
-                  ? Colors.blue.shade100
-                  : Colors.green.shade100,
-              child: Icon(
-                _currentRepresentative.type == 'مندوب'
-                    ? Icons.person
-                    : Icons.people,
-                size: 48,
-                color: _currentRepresentative.type == 'مندوب'
-                    ? Colors.blue
-                    : Colors.green,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _currentRepresentative.name,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Chip(
-              label: Text(_currentRepresentative.type),
-              backgroundColor: _currentRepresentative.type == 'مندوب'
-                  ? Colors.blue.shade100
-                  : Colors.green.shade100,
-            ),
-            if (_currentRepresentative.phone != null) ...[
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.phone, size: 16, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Text(
-                    _currentRepresentative.phone!,
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-                ],
-              ),
-            ],
-            const Divider(height: 32),
+            // الصف الأول - الأيقونة والمعلومات الأساسية
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildSummaryItem(
-                  'إجمالي الديون',
-                  '${numberFormat.format(_currentRepresentative.totalDebt)} جنيه',
-                  Colors.orange,
+                CircleAvatar(
+                  radius: Responsive.radius(30),
+                  backgroundColor: _currentRepresentative.type == 'مندوب'
+                      ? Colors.blue.shade100
+                      : Colors.green.shade100,
+                  child: Icon(
+                    _currentRepresentative.type == 'مندوب'
+                        ? Icons.person
+                        : Icons.people,
+                    size: Responsive.icon(32),
+                    color: _currentRepresentative.type == 'مندوب'
+                        ? Colors.blue
+                        : Colors.green,
+                  ),
                 ),
-                _buildSummaryItem(
-                  'إجمالي المدفوع',
-                  '${numberFormat.format(_currentRepresentative.totalPaid)} جنيه',
-                  Colors.green,
+                SizedBox(width: Responsive.width(12)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _currentRepresentative.name,
+                        style: TextStyle(
+                          fontSize: Responsive.font(18),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: Responsive.height(2)),
+                      Container(
+                        padding: Responsive.paddingSym(h: 8, v: 2),
+                        decoration: BoxDecoration(
+                          color: _currentRepresentative.type == 'مندوب'
+                              ? Colors.blue.shade100
+                              : Colors.green.shade100,
+                          borderRadius:
+                              BorderRadius.circular(Responsive.radius(4)),
+                        ),
+                        child: Text(
+                          _currentRepresentative.type,
+                          style: TextStyle(fontSize: Responsive.font(11)),
+                        ),
+                      ),
+                      if (_currentRepresentative.phone != null) ...[
+                        SizedBox(height: Responsive.height(4)),
+                        Row(
+                          children: [
+                            Icon(Icons.phone,
+                                size: Responsive.icon(12),
+                                color: Colors.grey.shade600),
+                            SizedBox(width: Responsive.width(4)),
+                            Text(
+                              _currentRepresentative.phone!,
+                              style: TextStyle(
+                                fontSize: Responsive.font(11),
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                // المتبقي بشكل كبير
+                Container(
+                  padding: Responsive.paddingAll(12),
+                  decoration: BoxDecoration(
+                    color: hasDebt ? Colors.red : Colors.green,
+                    borderRadius: BorderRadius.circular(Responsive.radius(8)),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        'المتبقي',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: Responsive.font(10),
+                        ),
+                      ),
+                      Text(
+                        numberFormat
+                            .format(_currentRepresentative.remainingDebt),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: Responsive.font(18),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        hasDebt ? 'دين' : 'مسدد',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: Responsive.font(9),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: hasDebt ? Colors.red : Colors.green,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  const Text(
-                    'المتبقي',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                    ),
+
+            SizedBox(height: Responsive.height(12)),
+            Divider(height: Responsive.height(1)),
+            SizedBox(height: Responsive.height(12)),
+
+            // الصف الثاني - الإحصائيات
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCompactStat(
+                    'إجمالي الديون',
+                    numberFormat.format(_currentRepresentative.totalDebt),
+                    Icons.shopping_cart,
+                    Colors.orange,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${numberFormat.format(_currentRepresentative.remainingDebt)} جنيه',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                    ),
+                ),
+                Container(
+                  height: Responsive.height(40),
+                  width: Responsive.width(1),
+                  color: Colors.grey.shade300,
+                ),
+                Expanded(
+                  child: _buildCompactStat(
+                    'إجمالي المدفوع',
+                    numberFormat.format(_currentRepresentative.totalPaid),
+                    Icons.payment,
+                    Colors.green,
                   ),
-                  Text(
-                    hasDebt ? 'عليه دين' : 'مسدد',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                    ),
+                ),
+                Container(
+                  height: Responsive.height(40),
+                  width: Responsive.width(1),
+                  color: Colors.grey.shade300,
+                ),
+                Expanded(
+                  child: _buildCompactStat(
+                    'المعاملات',
+                    _transactions.length.toString(),
+                    Icons.receipt_long,
+                    Colors.blue,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
         ),
@@ -232,24 +303,29 @@ class _RepresentativeDetailsScreenState
     );
   }
 
-  Widget _buildSummaryItem(String label, String value, Color color) {
+  Widget _buildCompactStat(
+      String label, String value, IconData icon, Color color) {
     return Column(
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Colors.grey,
-          ),
-        ),
-        const SizedBox(height: 4),
+        Icon(icon, color: color, size: Responsive.icon(20)),
+        SizedBox(height: Responsive.height(4)),
         Text(
           value,
           style: TextStyle(
-            fontSize: 16,
+            fontSize: Responsive.font(14),
             fontWeight: FontWeight.bold,
             color: color,
           ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: Responsive.font(10),
+            color: Colors.grey,
+          ),
+          textAlign: TextAlign.center,
         ),
       ],
     );
@@ -257,7 +333,7 @@ class _RepresentativeDetailsScreenState
 
   Widget _buildActionButtons() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: Responsive.paddingSym(h: 12, v: 8),
       child: Row(
         children: [
           Expanded(
@@ -273,34 +349,40 @@ class _RepresentativeDetailsScreenState
                         ),
                       );
                       if (result == true && mounted) {
-                        await _loadData(); // ⭐ تحديث البيانات
+                        await _loadData();
                       }
                     }
                   : null,
-              icon: const Icon(Icons.payment),
-              label: const Text('إضافة دفعة'),
+              icon: Icon(Icons.payment, size: Responsive.icon(18)),
+              label: Text(
+                'إضافة دفعة',
+                style: TextStyle(fontSize: Responsive.font(13)),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: Responsive.paddingSym(v: 10),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(Responsive.radius(8)),
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: Responsive.width(8)),
           Expanded(
             child: ElevatedButton.icon(
               onPressed: _printStatement,
-              icon: const Icon(Icons.print),
-              label: const Text('كشف حساب'),
+              icon: Icon(Icons.print, size: Responsive.icon(18)),
+              label: Text(
+                'كشف حساب',
+                style: TextStyle(fontSize: Responsive.font(13)),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: Responsive.paddingSym(v: 10),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(Responsive.radius(8)),
                 ),
               ),
             ),
@@ -315,16 +397,23 @@ class _RepresentativeDetailsScreenState
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.receipt_long, size: 80, color: Colors.grey.shade400),
-          const SizedBox(height: 16),
+          Icon(Icons.receipt_long,
+              size: Responsive.icon(80), color: Colors.grey.shade400),
+          SizedBox(height: Responsive.height(16)),
           Text(
             'لا توجد معاملات',
-            style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
+            style: TextStyle(
+              fontSize: Responsive.font(18),
+              color: Colors.grey.shade600,
+            ),
           ),
-          const SizedBox(height: 8),
-          const Text(
+          SizedBox(height: Responsive.height(8)),
+          Text(
             'سيتم عرض جميع المعاملات هنا',
-            style: TextStyle(fontSize: 14, color: Colors.grey),
+            style: TextStyle(
+              fontSize: Responsive.font(14),
+              color: Colors.grey,
+            ),
           ),
         ],
       ),
@@ -335,7 +424,7 @@ class _RepresentativeDetailsScreenState
     final numberFormat = NumberFormat('#,##0.00', 'ar');
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: Responsive.paddingSym(h: 12, v: 8),
       itemCount: _transactions.length,
       itemBuilder: (context, index) {
         final transaction = _transactions[index];
@@ -367,21 +456,26 @@ class _RepresentativeDetailsScreenState
         }
 
         return Card(
-          margin: const EdgeInsets.only(bottom: 12),
+          margin: Responsive.paddingOnly(bottom: 8),
           elevation: 2,
           color: cardColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(Responsive.radius(10)),
+          ),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: Responsive.paddingAll(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
                     CircleAvatar(
+                      radius: Responsive.radius(18),
                       backgroundColor: iconColor.withOpacity(0.2),
-                      child: Icon(icon, color: iconColor),
+                      child: Icon(icon,
+                          color: iconColor, size: Responsive.icon(18)),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: Responsive.width(10)),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -389,15 +483,15 @@ class _RepresentativeDetailsScreenState
                           Text(
                             transaction.getTypeInArabic(),
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: Responsive.font(14),
                               fontWeight: FontWeight.bold,
                               color: iconColor,
                             ),
                           ),
                           Text(
                             transaction.getFormattedDateTime(),
-                            style: const TextStyle(
-                              fontSize: 12,
+                            style: TextStyle(
+                              fontSize: Responsive.font(10),
                               color: Colors.grey,
                             ),
                           ),
@@ -408,9 +502,9 @@ class _RepresentativeDetailsScreenState
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          '${numberFormat.format(transaction.amount)} جنيه',
+                          numberFormat.format(transaction.amount),
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: Responsive.font(15),
                             fontWeight: FontWeight.bold,
                             color: iconColor,
                           ),
@@ -419,8 +513,8 @@ class _RepresentativeDetailsScreenState
                             transaction.paidAmount > 0) ...[
                           Text(
                             'دفع: ${numberFormat.format(transaction.paidAmount)}',
-                            style: const TextStyle(
-                              fontSize: 12,
+                            style: TextStyle(
+                              fontSize: Responsive.font(10),
                               color: Colors.green,
                             ),
                           ),
@@ -430,59 +524,77 @@ class _RepresentativeDetailsScreenState
                   ],
                 ),
                 if (transaction.productsSummary != null) ...[
-                  const SizedBox(height: 12),
+                  SizedBox(height: Responsive.height(8)),
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: Responsive.paddingAll(8),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(Responsive.radius(6)),
                     ),
                     child: Text(
                       transaction.productsSummary!,
-                      style: const TextStyle(fontSize: 14),
+                      style: TextStyle(fontSize: Responsive.font(12)),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
                 if (transaction.notes != null) ...[
-                  const SizedBox(height: 8),
+                  SizedBox(height: Responsive.height(6)),
                   Row(
                     children: [
-                      const Icon(Icons.note, size: 16, color: Colors.grey),
-                      const SizedBox(width: 4),
+                      Icon(Icons.note,
+                          size: Responsive.icon(12),
+                          color: Colors.grey.shade600),
+                      SizedBox(width: Responsive.width(4)),
                       Expanded(
                         child: Text(
                           transaction.notes!,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey,
+                          style: TextStyle(
+                            fontSize: Responsive.font(11),
+                            color: Colors.grey.shade600,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ),
                 ],
-                const Divider(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'المتبقي بعد العملية:',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
+                Padding(
+                  padding: Responsive.paddingOnly(top: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'المتبقي:',
+                        style: TextStyle(
+                          fontSize: Responsive.font(11),
+                          color: Colors.grey,
+                        ),
                       ),
-                    ),
-                    Text(
-                      '${numberFormat.format(transaction.remainingDebt)} جنيه',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: transaction.remainingDebt > 0
-                            ? Colors.red
-                            : Colors.green,
+                      Container(
+                        padding: Responsive.paddingSym(h: 8, v: 2),
+                        decoration: BoxDecoration(
+                          color: transaction.remainingDebt > 0
+                              ? Colors.red.shade100
+                              : Colors.green.shade100,
+                          borderRadius:
+                              BorderRadius.circular(Responsive.radius(4)),
+                        ),
+                        child: Text(
+                          '${numberFormat.format(transaction.remainingDebt)} جنيه',
+                          style: TextStyle(
+                            fontSize: Responsive.font(12),
+                            fontWeight: FontWeight.bold,
+                            color: transaction.remainingDebt > 0
+                                ? Colors.red.shade700
+                                : Colors.green.shade700,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -494,8 +606,11 @@ class _RepresentativeDetailsScreenState
 
   void _printStatement() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('سيتم إضافة ميزة طباعة كشف الحساب قريباً'),
+      SnackBar(
+        content: Text(
+          'سيتم إضافة ميزة طباعة كشف الحساب قريباً',
+          style: TextStyle(fontSize: Responsive.font(14)),
+        ),
         backgroundColor: Colors.blue,
       ),
     );
@@ -505,14 +620,21 @@ class _RepresentativeDetailsScreenState
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('تأكيد الحذف'),
+        title: Text(
+          'تأكيد الحذف',
+          style: TextStyle(fontSize: Responsive.font(18)),
+        ),
         content: Text(
           'هل أنت متأكد من حذف ${_currentRepresentative.name}؟\nسيتم حذف جميع المعاملات المرتبطة.',
+          style: TextStyle(fontSize: Responsive.font(14)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء'),
+            child: Text(
+              'إلغاء',
+              style: TextStyle(fontSize: Responsive.font(14)),
+            ),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -524,8 +646,11 @@ class _RepresentativeDetailsScreenState
               if (success && mounted) {
                 Navigator.pop(context, true);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('تم الحذف بنجاح'),
+                  SnackBar(
+                    content: Text(
+                      'تم الحذف بنجاح',
+                      style: TextStyle(fontSize: Responsive.font(14)),
+                    ),
                     backgroundColor: Colors.green,
                   ),
                 );
@@ -535,7 +660,10 @@ class _RepresentativeDetailsScreenState
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
-            child: const Text('حذف'),
+            child: Text(
+              'حذف',
+              style: TextStyle(fontSize: Responsive.font(14)),
+            ),
           ),
         ],
       ),

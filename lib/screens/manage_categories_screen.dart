@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/product_provider.dart';
 import '../services/database_helper.dart';
 import '../widgets/password_dialog.dart';
 
@@ -228,6 +226,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
         TextEditingController(text: currentPhone ?? '');
 
     final result = await showDialog<Map<String, String>>(
+      // ignore: use_build_context_synchronously
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('تعديل'),

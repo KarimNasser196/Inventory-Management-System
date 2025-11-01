@@ -209,7 +209,7 @@ class FinancialStatisticsTab extends StatelessWidget {
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: DataTable(
-                    headingRowColor: MaterialStateProperty.all(Colors.blue[50]),
+                    headingRowColor: WidgetStateProperty.all(Colors.blue[50]),
                     headingTextStyle: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: Responsive.font(14),
@@ -366,7 +366,7 @@ class FinancialStatisticsTab extends StatelessWidget {
   }
 }
 
-// ==================== تقرير المنتجات ====================
+// ==================== تقرير المنتجات مع إجمالي القيمة ====================
 class ProductsReportTab extends StatefulWidget {
   const ProductsReportTab({super.key});
 
@@ -427,6 +427,12 @@ class _ProductsReportTabState extends State<ProductsReportTab> {
                     report['supplier'].toLowerCase().contains(query);
               }).toList();
 
+        // ⭐ حساب إجمالي القيمة الكلية للمنتجات المفلترة
+        final totalInventoryValue = filteredReports.fold<double>(
+          0,
+          (sum, report) => sum + report['inventoryValue'],
+        );
+
         return SingleChildScrollView(
           padding: Responsive.paddingAll(isMobile ? 16 : 24),
           child: Column(
@@ -440,12 +446,46 @@ class _ProductsReportTabState extends State<ProductsReportTab> {
                     ),
               ),
               Responsive.vBox(8),
-              Text(
-                'عدد المنتجات: ${provider.products.length}',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.grey[600],
-                      fontSize: Responsive.font(16),
+
+              // ⭐ عرض الإحصائيات مع إجمالي القيمة
+              Row(
+                children: [
+                  Text(
+                    'عدد المنتجات: ${filteredReports.length}',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: Colors.grey[600],
+                          fontSize: Responsive.font(16),
+                        ),
+                  ),
+                  Responsive.hBox(16),
+                  Container(
+                    padding: Responsive.paddingSym(h: 12, v: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.green[50],
+                      borderRadius: BorderRadius.circular(Responsive.radius(8)),
+                      border: Border.all(color: Colors.green[300]!),
                     ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.attach_money,
+                          size: Responsive.icon(20),
+                          color: Colors.green[700],
+                        ),
+                        Responsive.hBox(6),
+                        Text(
+                          'إجمالي قيمة المخزون: ${NumberFormat('#,##0.00', 'ar').format(totalInventoryValue)} جنيه',
+                          style: TextStyle(
+                            fontSize: Responsive.font(16),
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green[700],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
               Responsive.vBox(16),
 
@@ -524,7 +564,7 @@ class _ProductsReportTabState extends State<ProductsReportTab> {
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: DataTable(
-                    headingRowColor: MaterialStateProperty.all(Colors.blue[50]),
+                    headingRowColor: WidgetStateProperty.all(Colors.blue[50]),
                     headingTextStyle: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: Responsive.font(14),
@@ -537,6 +577,9 @@ class _ProductsReportTabState extends State<ProductsReportTab> {
                       DataColumn(label: Text('المخزن')),
                       DataColumn(label: Text('المورد')),
                       DataColumn(label: Text('الكمية المتاحة'), numeric: true),
+                      DataColumn(
+                          label: Text('قيمة المخزون'),
+                          numeric: true), // ⭐ عمود جديد
                       DataColumn(label: Text('الكمية المباعة'), numeric: true),
                       DataColumn(label: Text('إجمالي المبيعات')),
                       DataColumn(label: Text('تكلفة الشراء')),
@@ -558,6 +601,24 @@ class _ProductsReportTabState extends State<ProductsReportTab> {
                                 color: report['availableQty'] > 0
                                     ? Colors.green
                                     : Colors.red,
+                              ),
+                            ),
+                          ),
+                          // ⭐ عمود قيمة المخزون الجديد
+                          DataCell(
+                            Container(
+                              padding: Responsive.paddingSym(h: 8, v: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.green[50],
+                                borderRadius:
+                                    BorderRadius.circular(Responsive.radius(6)),
+                              ),
+                              child: Text(
+                                '${NumberFormat('#,##0.00', 'ar').format(report['inventoryValue'])} جنيه',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green[700],
+                                ),
                               ),
                             ),
                           ),
@@ -617,66 +678,88 @@ class _ProductsReportTabState extends State<ProductsReportTab> {
     );
   }
 
+  // ⭐ دالة حساب التقارير - تأكد من إضافة حساب قيمة المخزون
   List<Map<String, dynamic>> _calculateProductReports(
       ProductProvider provider) {
-    final reports = <Map<String, dynamic>>[];
+    return provider.products.map((product) {
+      // حساب المبيعات لهذا المنتج
+      final productSales =
+          provider.sales.where((sale) => sale.productId == product.id).toList();
 
-    for (var product in provider.products) {
-      // حساب الكمية المباعة
-      final soldQty = provider.sales
-          .where((sale) => sale.productId == product.id)
-          .fold<int>(0, (sum, sale) => sum + sale.quantitySold);
-
-      // حساب إجمالي المبيعات
-      final totalSales = provider.sales
-          .where((sale) => sale.productId == product.id)
-          .fold<double>(0, (sum, sale) => sum + sale.totalAmount);
-
-      // حساب تكلفة الشراء الإجمالية
-      final totalCost = provider.sales
-          .where((sale) => sale.productId == product.id)
-          .fold<double>(
-              0, (sum, sale) => sum + (sale.purchasePrice * sale.quantitySold));
-
-      // حساب الربح
+      final soldQty =
+          productSales.fold<int>(0, (sum, sale) => sum + sale.quantitySold);
+      final totalSales =
+          productSales.fold<double>(0, (sum, sale) => sum + sale.totalAmount);
+      final totalCost = productSales.fold<double>(
+          0, (sum, sale) => sum + (sale.purchasePrice * sale.quantitySold));
       final profit = totalSales - totalCost;
+      final profitMargin = totalSales > 0 ? (profit / totalSales) * 100 : 0;
 
-      // حساب نسبة الربح
-      final profitMargin = totalSales > 0 ? (profit / totalSales * 100) : 0.0;
+      // ⭐ حساب قيمة المخزون = الكمية المتاحة × سعر الشراء
+      final inventoryValue = product.quantity * product.purchasePrice;
 
-      reports.add({
+      return {
         'name': product.name,
         'category': product.category,
         'warehouse': product.warehouse,
         'supplier': product.supplierName,
         'availableQty': product.quantity,
+        'inventoryValue': inventoryValue, // ⭐ القيمة الجديدة
         'soldQty': soldQty,
         'totalSales': totalSales,
         'totalCost': totalCost,
         'profit': profit,
         'profitMargin': profitMargin,
-      });
-    }
-
-    // ترتيب حسب الكمية المباعة (الأعلى أولاً)
-    reports
-        .sort((a, b) => (b['soldQty'] as int).compareTo(a['soldQty'] as int));
-
-    return reports;
+      };
+    }).toList();
   }
 }
-
 // ==================== حركة المخزون ====================
-class InventoryMovementTab extends StatelessWidget {
+// lib/widgets/inventory_movement_tab.dart - مع فلتر التاريخ
+
+class InventoryMovementTab extends StatefulWidget {
   const InventoryMovementTab({super.key});
+
+  @override
+  State<InventoryMovementTab> createState() => _InventoryMovementTabState();
+}
+
+class _InventoryMovementTabState extends State<InventoryMovementTab> {
+  DateTime? _startDate;
+  DateTime? _endDate;
+  String _filterType =
+      'الكل'; // 'الكل', 'بيع', 'إضافة', 'استرجاع', 'زيادة', 'نقصان'
 
   @override
   Widget build(BuildContext context) {
     Responsive.init(context);
-    final isMobile = Responsive.isMobile(context);
 
     return Consumer<ProductProvider>(
       builder: (context, provider, _) {
+        // تطبيق الفلتر
+        var filteredTransactions = provider.inventoryTransactions;
+
+        // فلتر حسب التاريخ
+        if (_startDate != null) {
+          filteredTransactions = filteredTransactions.where((tx) {
+            return tx.dateTime
+                .isAfter(_startDate!.subtract(const Duration(days: 1)));
+          }).toList();
+        }
+
+        if (_endDate != null) {
+          filteredTransactions = filteredTransactions.where((tx) {
+            return tx.dateTime.isBefore(_endDate!.add(const Duration(days: 1)));
+          }).toList();
+        }
+
+        // فلتر حسب نوع العملية
+        if (_filterType != 'الكل') {
+          filteredTransactions = filteredTransactions.where((tx) {
+            return tx.transactionType == _filterType;
+          }).toList();
+        }
+
         if (provider.inventoryTransactions.isEmpty) {
           return Center(
             child: Column(
@@ -697,87 +780,450 @@ class InventoryMovementTab extends StatelessWidget {
           );
         }
 
-        return SingleChildScrollView(
-          padding: Responsive.paddingAll(isMobile ? 16 : 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'حركة المخزون',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      fontSize: Responsive.font(isMobile ? 24 : 32),
-                    ),
-              ),
-              Responsive.vBox(8),
-              Text(
-                'عدد الحركات: ${provider.inventoryTransactions.length}',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.grey[600],
-                      fontSize: Responsive.font(16),
-                    ),
-              ),
-              Responsive.vBox(24),
-              Card(
-                elevation: 4,
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                    headingRowColor: MaterialStateProperty.all(Colors.blue[50]),
-                    headingTextStyle: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: Responsive.font(14),
-                      color: Colors.black87,
-                    ),
-                    dataTextStyle: TextStyle(fontSize: Responsive.font(13)),
-                    columns: const [
-                      DataColumn(label: Text('المنتج')),
-                      DataColumn(label: Text('نوع العملية')),
-                      DataColumn(label: Text('التغيير'), numeric: true),
-                      DataColumn(label: Text('المتبقي'), numeric: true),
-                      DataColumn(label: Text('التاريخ')),
-                      DataColumn(label: Text('الملاحظات')),
-                    ],
-                    rows: provider.inventoryTransactions.map((transaction) {
-                      final isPositive = transaction.quantityChange > 0;
-                      return DataRow(
-                        cells: [
-                          DataCell(Text(transaction.productName)),
-                          DataCell(Text(transaction.transactionType)),
-                          DataCell(
+        return Column(
+          children: [
+            // شريط الفلاتر
+            _buildFiltersSection(provider),
+
+            // الجدول
+            Expanded(
+              child: SingleChildScrollView(
+                padding: Responsive.paddingAll(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             Text(
-                              '${isPositive ? '+' : ''}${transaction.quantityChange}',
+                              'حركة المخزون',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: isPositive ? Colors.green : Colors.red,
+                                fontSize: Responsive.font(32),
                               ),
                             ),
-                          ),
-                          DataCell(
+                            Responsive.vBox(4),
                             Text(
-                              '${transaction.quantityAfter}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
+                              _getFilterDescription(
+                                filteredTransactions.length,
+                                provider.inventoryTransactions.length,
+                              ),
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: Responsive.font(16),
                               ),
                             ),
-                          ),
-                          DataCell(
-                            Text(
-                              DateFormat('yyyy-MM-dd HH:mm')
-                                  .format(transaction.dateTime),
+                          ],
+                        ),
+                        if (_startDate != null ||
+                            _endDate != null ||
+                            _filterType != 'الكل')
+                          OutlinedButton.icon(
+                            onPressed: _clearFilters,
+                            icon: Icon(Icons.clear, size: Responsive.icon(18)),
+                            label: Text(
+                              'إزالة الفلاتر',
+                              style: TextStyle(fontSize: Responsive.font(14)),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.red,
+                              side: const BorderSide(color: Colors.red),
                             ),
                           ),
-                          DataCell(Text(transaction.notes ?? '-')),
-                        ],
-                      );
-                    }).toList(),
-                  ),
+                      ],
+                    ),
+                    Responsive.vBox(24),
+                    Card(
+                      elevation: 4,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: DataTable(
+                          headingRowColor:
+                              WidgetStateProperty.all(Colors.blue[50]),
+                          headingTextStyle: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: Responsive.font(14),
+                            color: Colors.black87,
+                          ),
+                          dataTextStyle:
+                              TextStyle(fontSize: Responsive.font(13)),
+                          columns: const [
+                            DataColumn(label: Text('المنتج')),
+                            DataColumn(label: Text('نوع العملية')),
+                            DataColumn(label: Text('التغيير'), numeric: true),
+                            DataColumn(label: Text('المتبقي'), numeric: true),
+                            DataColumn(label: Text('التاريخ')),
+                            DataColumn(label: Text('الملاحظات')),
+                          ],
+                          rows: filteredTransactions.map((transaction) {
+                            final isPositive = transaction.quantityChange > 0;
+                            return DataRow(
+                              cells: [
+                                DataCell(Text(transaction.productName)),
+                                DataCell(
+                                  Container(
+                                    padding: Responsive.paddingSym(h: 8, v: 4),
+                                    decoration: BoxDecoration(
+                                      color: _getTransactionTypeColor(
+                                              transaction.transactionType)
+                                          .withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(
+                                          Responsive.radius(4)),
+                                    ),
+                                    child: Text(
+                                      transaction.transactionType,
+                                      style: TextStyle(
+                                        color: _getTransactionTypeColor(
+                                            transaction.transactionType),
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    '${isPositive ? '+' : ''}${transaction.quantityChange}',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: isPositive
+                                          ? Colors.green
+                                          : Colors.red,
+                                    ),
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    '${transaction.quantityAfter}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    DateFormat('yyyy-MM-dd HH:mm')
+                                        .format(transaction.dateTime),
+                                  ),
+                                ),
+                                DataCell(Text(transaction.notes ?? '-')),
+                              ],
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildFiltersSection(ProductProvider provider) {
+    return Container(
+      padding: Responsive.paddingAll(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        border: Border(
+          bottom: BorderSide(color: Colors.grey[300]!),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.filter_list, size: Responsive.icon(20)),
+              Responsive.hBox(8),
+              Text(
+                'تصفية حسب:',
+                style: TextStyle(
+                  fontSize: Responsive.font(16),
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
+          Responsive.vBox(12),
+
+          // صف الفلاتر
+          Wrap(
+            spacing: Responsive.width(12),
+            runSpacing: Responsive.height(12),
+            children: [
+              // فلتر نوع العملية
+              _buildFilterChip(
+                label: 'نوع العملية',
+                value: _filterType,
+                icon: Icons.category,
+                onTap: () => _showTransactionTypeFilter(),
+              ),
+
+              // فلتر تاريخ البداية
+              _buildFilterChip(
+                label: _startDate == null
+                    ? 'من تاريخ'
+                    : 'من: ${DateFormat('yyyy-MM-dd').format(_startDate!)}',
+                value: null,
+                icon: Icons.calendar_today,
+                onTap: () => _selectStartDate(),
+              ),
+
+              // فلتر تاريخ النهاية
+              _buildFilterChip(
+                label: _endDate == null
+                    ? 'إلى تاريخ'
+                    : 'إلى: ${DateFormat('yyyy-MM-dd').format(_endDate!)}',
+                value: null,
+                icon: Icons.event,
+                onTap: () => _selectEndDate(),
+              ),
+
+              // أزرار سريعة
+              _buildQuickFilterChip('اليوم', () => _setTodayFilter()),
+              _buildQuickFilterChip('آخر 7 أيام', () => _setLast7DaysFilter()),
+              _buildQuickFilterChip('هذا الشهر', () => _setThisMonthFilter()),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required String? value,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    final hasValue = value != null && value != 'الكل';
+
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: Responsive.paddingSym(h: 12, v: 8),
+        decoration: BoxDecoration(
+          color: hasValue ? Colors.blue[100] : Colors.white,
+          borderRadius: BorderRadius.circular(Responsive.radius(8)),
+          border: Border.all(
+            color: hasValue ? Colors.blue : Colors.grey[300]!,
+            width: hasValue ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: Responsive.icon(18),
+              color: hasValue ? Colors.blue[700] : Colors.grey[600],
+            ),
+            Responsive.hBox(6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: Responsive.font(13),
+                fontWeight: hasValue ? FontWeight.bold : FontWeight.normal,
+                color: hasValue ? Colors.blue[700] : Colors.grey[800],
+              ),
+            ),
+            if (hasValue) ...[
+              Responsive.hBox(4),
+              Icon(
+                Icons.check_circle,
+                size: Responsive.icon(16),
+                color: Colors.blue[700],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickFilterChip(String label, VoidCallback onTap) {
+    return OutlinedButton(
+      onPressed: onTap,
+      style: OutlinedButton.styleFrom(
+        padding: Responsive.paddingSym(h: 12, v: 8),
+        side: BorderSide(color: Colors.green[300]!),
+        foregroundColor: Colors.green[700],
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: Responsive.font(12)),
+      ),
+    );
+  }
+
+  void _showTransactionTypeFilter() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'اختر نوع العملية',
+          style: TextStyle(fontSize: Responsive.font(18)),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildTypeOption('الكل'),
+            _buildTypeOption('بيع'),
+            _buildTypeOption('إضافة'),
+            _buildTypeOption('استرجاع'),
+            _buildTypeOption('استرجاع من بيع'),
+            _buildTypeOption('إلغاء بيع'),
+            _buildTypeOption('زيادة'),
+            _buildTypeOption('نقصان'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTypeOption(String type) {
+    final isSelected = _filterType == type;
+
+    return ListTile(
+      leading: Icon(
+        isSelected ? Icons.check_circle : Icons.circle_outlined,
+        color: isSelected ? Colors.blue : Colors.grey,
+        size: Responsive.icon(24),
+      ),
+      title: Text(
+        type,
+        style: TextStyle(
+          fontSize: Responsive.font(14),
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected ? Colors.blue : Colors.black,
+        ),
+      ),
+      tileColor: isSelected ? Colors.blue[50] : null,
+      onTap: () {
+        setState(() {
+          _filterType = type;
+        });
+        Navigator.pop(context);
+      },
+    );
+  }
+
+  Future<void> _selectStartDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _startDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: Colors.blue,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
         );
       },
     );
+
+    if (picked != null) {
+      setState(() {
+        _startDate = picked;
+      });
+    }
+  }
+
+  Future<void> _selectEndDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _endDate ?? DateTime.now(),
+      firstDate: _startDate ?? DateTime(2020),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: Colors.blue,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _endDate = picked;
+      });
+    }
+  }
+
+  void _setTodayFilter() {
+    setState(() {
+      _startDate = DateTime.now();
+      _endDate = DateTime.now();
+    });
+  }
+
+  void _setLast7DaysFilter() {
+    setState(() {
+      _startDate = DateTime.now().subtract(const Duration(days: 7));
+      _endDate = DateTime.now();
+    });
+  }
+
+  void _setThisMonthFilter() {
+    final now = DateTime.now();
+    setState(() {
+      _startDate = DateTime(now.year, now.month, 1);
+      _endDate = now;
+    });
+  }
+
+  void _clearFilters() {
+    setState(() {
+      _startDate = null;
+      _endDate = null;
+      _filterType = 'الكل';
+    });
+  }
+
+  String _getFilterDescription(int filtered, int total) {
+    if (filtered == total) {
+      return 'عدد الحركات: $total';
+    }
+    return 'عرض $filtered من أصل $total حركة';
+  }
+
+  Color _getTransactionTypeColor(String type) {
+    switch (type) {
+      case 'بيع':
+        return Colors.red;
+      case 'إضافة':
+        return Colors.green;
+      case 'استرجاع':
+      case 'استرجاع من بيع':
+        return Colors.orange;
+      case 'إلغاء بيع':
+        return Colors.purple;
+      case 'زيادة':
+        return Colors.blue;
+      case 'نقصان':
+        return Colors.brown;
+      default:
+        return Colors.grey;
+    }
   }
 }

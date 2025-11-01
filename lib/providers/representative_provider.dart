@@ -3,7 +3,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:soundtry/models/representative.dart';
 import 'package:soundtry/models/representative_transaction.dart';
-import 'package:soundtry/models/return_detail.dart';
 import 'package:soundtry/services/database_helper.dart';
 
 class RepresentativeProvider with ChangeNotifier {
@@ -28,6 +27,9 @@ class RepresentativeProvider with ChangeNotifier {
       _representatives.fold(0.0, (sum, r) => sum + r.remainingDebt);
   double get totalPaid =>
       _representatives.fold(0.0, (sum, r) => sum + r.totalPaid);
+  List<Representative> getAllByType(String type) {
+    return _representatives.where((r) => r.type == type).toList();
+  }
 
   RepresentativeProvider() {
     loadRepresentatives();
@@ -188,7 +190,7 @@ class RepresentativeProvider with ChangeNotifier {
       final rep = getRepresentativeById(representativeId);
       if (rep == null) return false;
 
-      final remainingAmount = totalAmount - paidAmount;
+      // final remainingAmount = totalAmount - paidAmount;
 
       // تحديث إجمالي الديون والمدفوع
       final updatedRep = rep.copyWith(

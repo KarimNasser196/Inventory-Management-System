@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+
 import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
 import '../models/product.dart';
@@ -371,7 +371,7 @@ class _AddProductScreenUpdatedState extends State<AddProductScreenUpdated> {
                           controller: _wholesalePriceController,
                           focusNode: _wholesalePriceFocus,
                           nextFocus: _bulkWholesalePriceFocus,
-                          label: 'سعر الجملة (10+)',
+                          label: 'سعر  الجملة ',
                           icon: Icons.shopping_basket,
                           hint: '0.00',
                           keyboardType: const TextInputType.numberWithOptions(
@@ -397,7 +397,7 @@ class _AddProductScreenUpdatedState extends State<AddProductScreenUpdated> {
                           controller: _bulkWholesalePriceController,
                           focusNode: _bulkWholesalePriceFocus,
                           nextFocus: _quantityFocus,
-                          label: 'سعر جملة الجملة (50+)',
+                          label: 'سعر جملة الجملة',
                           icon: Icons.store,
                           hint: '0.00',
                           keyboardType: const TextInputType.numberWithOptions(
@@ -604,7 +604,7 @@ class _AddProductScreenUpdatedState extends State<AddProductScreenUpdated> {
     String? Function(String?)? validator,
   }) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(fontSize: Responsive.font(14)),
@@ -628,7 +628,7 @@ class _AddProductScreenUpdatedState extends State<AddProductScreenUpdated> {
     if (_isEditing) {
       final bool? confirmed = await showDialog<bool>(
         context: context,
-        builder: (context) => PasswordDialog(
+        builder: (context) => const PasswordDialog(
           title: 'تأكيد التعديل',
           message: 'أدخل كلمة السر لتعديل المنتج',
         ),

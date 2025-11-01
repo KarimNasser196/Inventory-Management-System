@@ -11,8 +11,7 @@ import 'dart:ui' as ui;
 class AddPaymentScreen extends StatefulWidget {
   final Representative representative;
 
-  const AddPaymentScreen({Key? key, required this.representative})
-      : super(key: key);
+  const AddPaymentScreen({super.key, required this.representative});
 
   @override
   State<AddPaymentScreen> createState() => _AddPaymentScreenState();
@@ -194,7 +193,7 @@ class _AddPaymentScreenState extends State<AddPaymentScreen> {
         title: const Text('دفع المبلغ الكامل'),
         subtitle: const Text('سداد كامل المديونية'),
         value: _payFullAmount,
-        activeColor: Colors.green,
+        activeThumbColor: Colors.green,
         onChanged: (value) {
           setState(() {
             _payFullAmount = value;

@@ -1,5 +1,7 @@
 // lib/models/inventory_transaction.dart (FIXED & COMPLETE)
 
+import 'package:flutter/foundation.dart';
+
 class InventoryTransaction {
   int? id;
   int productId;
@@ -33,7 +35,9 @@ class InventoryTransaction {
     try {
       parsedDate = DateTime.parse(map['dateTime'] as String);
     } catch (e) {
-      print('Error parsing date: $e, using current time');
+      if (kDebugMode) {
+        print('Error parsing date: $e, using current time');
+      }
       parsedDate = DateTime.now();
     }
 
@@ -138,7 +142,9 @@ class InventoryTransaction {
     try {
       parsedDate = DateTime.parse(json['dateTime']);
     } catch (e) {
-      print('Error parsing JSON date: $e');
+      if (kDebugMode) {
+        print('Error parsing JSON date: $e');
+      }
       parsedDate = DateTime.now();
     }
 

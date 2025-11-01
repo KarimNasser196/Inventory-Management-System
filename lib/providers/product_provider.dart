@@ -96,8 +96,9 @@ class ProductProvider with ChangeNotifier {
       }
       if (product.name.isEmpty) throw Exception('اسم المنتج مطلوب');
       if (product.supplierName.isEmpty) throw Exception('اسم المورد مطلوب');
-      if (product.quantity < 0)
+      if (product.quantity < 0) {
         throw Exception('الكمية يجب أن تكون رقم إيجابي');
+      }
       if (product.purchasePrice <= 0 ||
           product.retailPrice <= 0 ||
           product.wholesalePrice <= 0 ||
@@ -151,10 +152,11 @@ class ProductProvider with ChangeNotifier {
       );
 
       final result = await dbHelper.updateProduct(product.id!, product.toMap());
-      if (result == 0)
+      if (result == 0) {
         throw Exception(
           'فشل في تحديث المنتج: لم يتم العثور على المنتج أو البيانات غير صالحة',
         );
+      }
 
       if (oldProduct.quantity != product.quantity) {
         final quantityChange = product.quantity - oldProduct.quantity;
@@ -195,8 +197,9 @@ class ProductProvider with ChangeNotifier {
     try {
       final dbHelper = DatabaseHelper.instance;
       final result = await dbHelper.deleteProduct(id);
-      if (result == 0)
+      if (result == 0) {
         throw Exception('فشل في حذف المنتج: لم يتم العثور على المنتج');
+      }
 
       _products.removeWhere((p) => p.id == id);
       _errorMessage = null;

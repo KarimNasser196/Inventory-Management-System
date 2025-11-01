@@ -8,8 +8,7 @@ import 'package:soundtry/providers/representative_provider.dart';
 class AddRepresentativeScreen extends StatefulWidget {
   final Representative? representative; // للتعديل
 
-  const AddRepresentativeScreen({Key? key, this.representative})
-      : super(key: key);
+  const AddRepresentativeScreen({super.key, this.representative});
 
   @override
   State<AddRepresentativeScreen> createState() =>
@@ -46,7 +45,8 @@ class _AddRepresentativeScreenState extends State<AddRepresentativeScreen> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(isEditing ? 'تعديل ${_selectedType}' : 'إضافة ${_selectedType} جديد'),
+          title: Text(
+              isEditing ? 'تعديل $_selectedType' : 'إضافة $_selectedType جديد'),
           centerTitle: true,
           backgroundColor: Colors.blue,
           foregroundColor: Colors.white,
@@ -120,7 +120,7 @@ class _AddRepresentativeScreenState extends State<AddRepresentativeScreen> {
       controller: _nameController,
       decoration: InputDecoration(
         labelText: 'الاسم *',
-        hintText: 'أدخل اسم ${_selectedType}',
+        hintText: 'أدخل اسم $_selectedType',
         prefixIcon: const Icon(Icons.person_outline),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
@@ -193,7 +193,7 @@ class _AddRepresentativeScreenState extends State<AddRepresentativeScreen> {
               ),
             )
           : Text(
-              isEditing ? 'حفظ التعديلات' : 'إضافة ${_selectedType}',
+              isEditing ? 'حفظ التعديلات' : 'إضافة $_selectedType',
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
     );

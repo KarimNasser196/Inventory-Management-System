@@ -1,5 +1,7 @@
 // lib/screens/maintenance_screen.dart (محدث مع إحصائيات مالية وفلترة)
 
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +9,10 @@ import 'package:intl/intl.dart';
 import '../providers/maintenance_provider.dart';
 import '../models/maintenance_record.dart';
 import 'add_maintenance_screen.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:flutter/services.dart' show rootBundle;
 
 class MaintenanceScreen extends StatefulWidget {
   const MaintenanceScreen({super.key});
@@ -97,7 +103,11 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _navigateToAddMaintenance(context),
         icon: const Icon(Icons.add),
-        label: const Text('سجل صيانة جديد'),
+        label: const Text(
+          '  استلام جهاز',
+          style: TextStyle(
+              fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.blue,
       ),
     );
@@ -138,7 +148,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
                   ),
                   Expanded(
                     child: _buildStatItem(
-                      'قيد العمل',
+                      'قيد الإصلاح',
                       '${provider.pendingRecords}',
                       Icons.pending,
                     ),
@@ -152,7 +162,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
                   ),
                   Expanded(
                     child: _buildStatItem(
-                      'مكتمل',
+                      'تم التسليم',
                       '${provider.completedRecords}',
                       Icons.done_all,
                     ),
@@ -345,14 +355,17 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
                 ),
               ),
               const SizedBox(width: 16),
-              _buildMiniStat('مستلم', todayStats['received']!, Colors.blue),
+              _buildMiniStat(
+                  'إجمالي السجلات', todayStats['received']!, Colors.blue),
               const SizedBox(width: 12),
               _buildMiniStat(
                   'قيد الإصلاح', todayStats['inProgress']!, Colors.orange),
               const SizedBox(width: 12),
-              _buildMiniStat('جاهز', todayStats['ready']!, Colors.green),
+              _buildMiniStat(
+                  'جاهز للاستلام', todayStats['ready']!, Colors.green),
               const SizedBox(width: 12),
-              _buildMiniStat('مُسَلّم', todayStats['delivered']!, Colors.grey),
+              _buildMiniStat(
+                  'تم التسليم', todayStats['delivered']!, Colors.grey),
               const SizedBox(width: 12),
               _buildMiniStat('مرفوض', todayStats['rejected']!, Colors.red),
             ],
@@ -828,6 +841,182 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
     }
   }
 
+// دالة الطباعة - بسيطة وعملية
+  Future<void> _printRepairReportToPDF(BuildContext context) async {
+    final provider = Provider.of<MaintenanceProvider>(context, listen: false);
+    final inRepairRecords = provider.getRecordsByStatus('قيد الإصلاح');
+
+    if (inRepairRecords.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('لا توجد أجهزة تحت الصيانة حالياً'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      // تحميل خط عربي
+      final arabicFont = await PdfGoogleFonts.cairoRegular();
+      final arabicBoldFont = await PdfGoogleFonts.cairoBold();
+
+      final pdf = pw.Document();
+
+      pdf.addPage(
+        pw.MultiPage(
+          textDirection: pw.TextDirection.rtl,
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(20), // هوامش أصغر
+          build: (context) => [
+            // الهيدر
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text(
+                  'تقرير الأجهزة تحت الصيانة',
+                  style: pw.TextStyle(fontSize: 14, font: arabicBoldFont),
+                  textDirection: pw.TextDirection.rtl,
+                ),
+                pw.Text(
+                  'التاريخ: ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())}',
+                  style: pw.TextStyle(fontSize: 9, font: arabicFont),
+                  textDirection: pw.TextDirection.rtl,
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 3),
+            pw.Text(
+              'عدد الأجهزة: ${inRepairRecords.length}',
+              style: pw.TextStyle(fontSize: 9, font: arabicFont),
+              textDirection: pw.TextDirection.rtl,
+            ),
+            pw.Divider(thickness: 0.5),
+            pw.SizedBox(height: 5),
+
+            // البيانات
+            ...List.generate(inRepairRecords.length, (index) {
+              final record = inRepairRecords[index];
+              return pw.Container(
+                margin: const pw.EdgeInsets.only(bottom: 8),
+                padding: const pw.EdgeInsets.all(6),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
+                  borderRadius:
+                      const pw.BorderRadius.all(pw.Radius.circular(3)),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    // السطر الأول - الرقم والكود
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text(
+                          '[${index + 1}] ${record.repairCode}',
+                          style:
+                              pw.TextStyle(fontSize: 9, font: arabicBoldFont),
+                          textDirection: pw.TextDirection.rtl,
+                        ),
+                        pw.Text(
+                          DateFormat('yyyy-MM-dd').format(record.receivedDate),
+                          style: pw.TextStyle(
+                              fontSize: 8,
+                              font: arabicFont,
+                              color: PdfColors.grey700),
+                          textDirection: pw.TextDirection.rtl,
+                        ),
+                      ],
+                    ),
+                    pw.SizedBox(height: 2),
+
+                    // السطر الثاني - العميل والهاتف
+                    pw.Row(
+                      children: [
+                        pw.Expanded(
+                          flex: 2,
+                          child: pw.Text(
+                            'العميل: ${record.customerName}',
+                            style: pw.TextStyle(fontSize: 8, font: arabicFont),
+                            textDirection: pw.TextDirection.rtl,
+                          ),
+                        ),
+                        pw.Expanded(
+                          flex: 1,
+                          child: pw.Text(
+                            'الهاتف: ${record.customerPhone}',
+                            style: pw.TextStyle(fontSize: 8, font: arabicFont),
+                            textDirection: pw.TextDirection.rtl,
+                          ),
+                        ),
+                      ],
+                    ),
+                    pw.SizedBox(height: 2),
+
+                    // السطر الثالث - الجهاز
+                    pw.Text(
+                      'الجهاز: ${record.deviceType}',
+                      style: pw.TextStyle(fontSize: 8, font: arabicFont),
+                      textDirection: pw.TextDirection.rtl,
+                    ),
+                    pw.SizedBox(height: 2),
+
+                    // السطر الرابع - العطل
+                    pw.Text(
+                      'العطل: ${record.problemDescription}',
+                      style: pw.TextStyle(
+                          fontSize: 8,
+                          font: arabicFont,
+                          color: PdfColors.grey800),
+                      textDirection: pw.TextDirection.rtl,
+                      maxLines: 2,
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+          footer: (context) => pw.Container(
+            alignment: pw.Alignment.center,
+            margin: const pw.EdgeInsets.only(top: 5),
+            child: pw.Text(
+              'صفحة ${context.pageNumber}',
+              style: pw.TextStyle(
+                  fontSize: 8, font: arabicFont, color: PdfColors.grey600),
+            ),
+          ),
+        ),
+      );
+
+      // طباعة أو حفظ PDF
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save(),
+        name:
+            'تقرير_صيانة_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.pdf',
+      );
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم إنشاء التقرير بنجاح'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('حدث خطأ: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+// تحديث دالة العرض الأصلية
   void _printRepairReport(BuildContext context) {
     final provider = Provider.of<MaintenanceProvider>(context, listen: false);
     final inRepairRecords = provider.getRecordsByStatus('قيد الإصلاح');
@@ -898,6 +1087,15 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
             },
             child: const Text('نسخ'),
           ),
+          TextButton.icon(
+            onPressed: () {
+              Navigator.pop(context);
+              _printRepairReportToPDF(context);
+            },
+            icon: const Icon(Icons.print, size: 18),
+            label: const Text('طباعة'),
+            style: TextButton.styleFrom(foregroundColor: Colors.blue),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('إغلاق'),
@@ -906,6 +1104,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
       ),
     );
   }
+// تحديث دالة العرض الأصلية لإضافة زر الطباعة
 
   Color _getStatusColor(String status) {
     switch (status) {

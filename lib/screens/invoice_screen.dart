@@ -92,7 +92,7 @@ class InvoiceScreen extends StatelessWidget {
                       ),
                       Column(
                         children: [
-                          Container(
+                          SizedBox(
                             width: 140,
                             height: 60,
                             child: Image.asset(
@@ -212,14 +212,13 @@ class InvoiceScreen extends StatelessWidget {
                                 _TableCell(item.productName,
                                     align: TextAlign.right),
                                 _TableCell(item.quantity.toString()),
-                                _TableCell(
-                                    '${item.unitPrice.toStringAsFixed(2)}'),
+                                _TableCell(item.unitPrice.toStringAsFixed(2)),
                                 _TableCell(
                                     '${item.total.toStringAsFixed(2)} جنيه',
                                     bold: true),
                               ],
                             );
-                          }).toList(),
+                          }),
                         ],
                       ),
                     ],
@@ -267,14 +266,6 @@ class InvoiceScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'شروط وأحكام الضمان',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
                       _buildWarrantyItem(
                           '• مدة ضمان البرامج أسبوع واحد من تاريخ الشراء'),
                       _buildWarrantyItem(

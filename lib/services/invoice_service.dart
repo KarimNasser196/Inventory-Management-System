@@ -1,6 +1,7 @@
 // lib/services/invoice_service.dart (FINAL - Matches Screen Exactly + RTL Fix)
 
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -20,7 +21,9 @@ class InvoiceService {
       arabicFont = await PdfGoogleFonts.cairoRegular();
       arabicFontBold = await PdfGoogleFonts.cairoBold();
     } catch (e) {
-      print('Error loading Arabic fonts: $e');
+      if (kDebugMode) {
+        print('Error loading Arabic fonts: $e');
+      }
     }
 
     // تحميل صورة الباركود
@@ -29,7 +32,9 @@ class InvoiceService {
       final bytes = await rootBundle.load('assets/barcode.jpg');
       barcodeImage = pw.MemoryImage(bytes.buffer.asUint8List());
     } catch (e) {
-      print('Error loading barcode image: $e');
+      if (kDebugMode) {
+        print('Error loading barcode image: $e');
+      }
     }
 
     final dateFormat = DateFormat('dd/MM/yyyy', 'ar');
@@ -53,9 +58,9 @@ class InvoiceService {
               // Header
               pw.Container(
                 padding: const pw.EdgeInsets.all(20),
-                decoration: pw.BoxDecoration(
+                decoration: const pw.BoxDecoration(
                   color: PdfColors.grey100,
-                  border: const pw.Border(
+                  border: pw.Border(
                     bottom: pw.BorderSide(color: PdfColors.grey400, width: 2),
                   ),
                 ),
@@ -233,14 +238,14 @@ class InvoiceService {
                                   '${item.total.toStringAsFixed(2)} جنيه',
                                   bold: true),
                               _buildTableCell(
-                                  '${item.unitPrice.toStringAsFixed(2)}'),
+                                  item.unitPrice.toStringAsFixed(2)),
                               _buildTableCell(item.quantity.toString()),
                               _buildTableCell(item.productName,
                                   align: pw.TextAlign.right),
                               _buildTableCell(index.toString()),
                             ],
                           );
-                        }).toList(),
+                        }),
                       ],
                     ),
                   ],
@@ -436,7 +441,9 @@ class InvoiceService {
         name: 'فاتورة_${invoice.invoiceNumber}.pdf',
       );
     } catch (e) {
-      print('Error printing invoice: $e');
+      if (kDebugMode) {
+        print('Error printing invoice: $e');
+      }
       rethrow;
     }
   }
@@ -447,7 +454,9 @@ class InvoiceService {
       final file = File(path);
       await file.writeAsBytes(await pdf.save());
     } catch (e) {
-      print('Error saving invoice: $e');
+      if (kDebugMode) {
+        print('Error saving invoice: $e');
+      }
       rethrow;
     }
   }

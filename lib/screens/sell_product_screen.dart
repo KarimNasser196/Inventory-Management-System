@@ -1,5 +1,7 @@
 // lib/screens/sell_product_screen.dart (DESKTOP ONLY - مع دعم المندوبين ونوع الدفع)
 
+// ignore_for_file: deprecated_member_use
+
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -42,15 +44,13 @@ class _SellProductScreenState extends State<SellProductScreen>
   late TabController _tabController;
   String? _selectedCategoryFilter;
   List<String> _availableCategories = [];
-  Set<int> _visiblePricesProducts = {};
   final _paidAmountController = TextEditingController();
 
-  List<CartItem> _cart = [];
+  final List<CartItem> _cart = [];
   bool _isSelling = false;
   final _invoiceSearchController = TextEditingController();
   String _invoiceSearchQuery = '';
 
-  String? _selectedClientId;
   String? _selectedClientName;
   String _clientType = 'عميل';
   Representative? _selectedRepresentative;
@@ -144,7 +144,6 @@ class _SellProductScreenState extends State<SellProductScreen>
   void _clearCart() {
     setState(() {
       _cart.clear();
-      _selectedClientId = null;
       _selectedClientName = null;
       _clientType = 'عميل';
       _selectedRepresentative = null;
@@ -226,7 +225,7 @@ class _SellProductScreenState extends State<SellProductScreen>
                         const SizedBox(width: 12),
                         Expanded(
                           child: DropdownButtonFormField<String?>(
-                            value: _selectedCategoryFilter,
+                            initialValue: _selectedCategoryFilter,
                             decoration: const InputDecoration(
                               labelText: 'الصنف',
                               border: OutlineInputBorder(),
@@ -266,7 +265,7 @@ class _SellProductScreenState extends State<SellProductScreen>
                               columnSpacing: 20,
                               horizontalMargin: 12,
                               headingRowColor:
-                                  MaterialStateProperty.all(Colors.blue[50]),
+                                  WidgetStateProperty.all(Colors.blue[50]),
                               columns: const [
                                 DataColumn(label: Text('المنتج')),
                                 DataColumn(label: Text('الصنف')),
@@ -829,7 +828,6 @@ class _SellProductScreenState extends State<SellProductScreen>
                                   onChanged: (value) {
                                     setBottomSheetState(() {
                                       _clientType = value!;
-                                      _selectedClientId = null;
                                       _selectedClientName = null;
                                       _selectedRepresentative = null;
                                     });
@@ -846,7 +844,6 @@ class _SellProductScreenState extends State<SellProductScreen>
                                   onChanged: (value) {
                                     setBottomSheetState(() {
                                       _clientType = value!;
-                                      _selectedClientId = null;
                                       _selectedClientName = null;
                                       _selectedRepresentative = null;
                                     });
@@ -862,9 +859,7 @@ class _SellProductScreenState extends State<SellProductScreen>
 
                     // اختيار العميل/المندوب
                     DropdownSearch<Representative>(
-                      items: repProvider.representatives
-                          .where((r) => r.type == _clientType)
-                          .toList(),
+                      items: repProvider.getAllByType(_clientType),
                       selectedItem: _selectedRepresentative,
                       itemAsString: (rep) => rep.name,
                       dropdownDecoratorProps: DropDownDecoratorProps(
@@ -898,7 +893,6 @@ class _SellProductScreenState extends State<SellProductScreen>
                       onChanged: (rep) {
                         setBottomSheetState(() {
                           _selectedRepresentative = rep;
-                          _selectedClientId = rep?.id.toString();
                           _selectedClientName = rep?.name;
                         });
                       },
@@ -1207,8 +1201,8 @@ class _SellProductScreenState extends State<SellProductScreen>
       return;
     }
     if (_selectedClientName == null || _selectedClientName!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('الرجاء اختيار ${_clientType}')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('الرجاء اختيار $_clientType')));
       return;
     }
 
@@ -1481,12 +1475,12 @@ class _SellProductScreenState extends State<SellProductScreen>
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
+                      const Row(
                         children: [
-                          const Icon(Icons.warning_amber,
+                          Icon(Icons.warning_amber,
                               color: Colors.orange, size: 20),
-                          const SizedBox(width: 8),
-                          const Text('المتبقي:',
+                          SizedBox(width: 8),
+                          Text('المتبقي:',
                               style: TextStyle(fontWeight: FontWeight.bold)),
                         ],
                       ),
@@ -1876,7 +1870,7 @@ class _SellProductScreenState extends State<SellProductScreen>
                                               ],
                                             ),
                                           );
-                                        }).toList(),
+                                        }),
                                         const Divider(thickness: 2),
                                         Row(
                                           mainAxisAlignment:
@@ -1957,7 +1951,7 @@ class _SellProductScreenState extends State<SellProductScreen>
                                 ],
                               ),
                             );
-                          }).toList(),
+                          }),
                         ],
                       ),
                     ),
@@ -1985,7 +1979,6 @@ class _SellProductScreenState extends State<SellProductScreen>
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           content: SingleChildScrollView(
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -2278,19 +2271,75 @@ class _SellProductScreenState extends State<SellProductScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                DropdownButtonFormField<Product>(
-                  value: selectedProduct,
-                  decoration: const InputDecoration(
-                    labelText: 'اختر المنتج',
-                    border: OutlineInputBorder(),
+                // ⭐⭐⭐ استخدام DropdownSearch بدل DropdownButtonFormField
+                DropdownSearch<Product>(
+                  items:
+                      provider.products.where((p) => p.quantity > 0).toList(),
+                  selectedItem: selectedProduct,
+                  itemAsString: (product) =>
+                      '${product.name} (متاح: ${product.quantity})',
+                  dropdownDecoratorProps: const DropDownDecoratorProps(
+                    dropdownSearchDecoration: InputDecoration(
+                      labelText: 'ابحث عن المنتج *',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.search, color: Colors.blue),
+                    ),
                   ),
-                  items: provider.products
-                      .where((p) => p.quantity > 0)
-                      .map((product) => DropdownMenuItem(
-                            value: product,
-                            child: Text(product.name),
-                          ))
-                      .toList(),
+                  popupProps: PopupProps.menu(
+                    showSearchBox: true,
+                    searchFieldProps: const TextFieldProps(
+                      decoration: InputDecoration(
+                        hintText: 'اكتب اسم المنتج...',
+                        prefixIcon: Icon(Icons.search),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    emptyBuilder: (context, searchEntry) => const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(20),
+                        child: Text('لا توجد منتجات متاحة'),
+                      ),
+                    ),
+                    itemBuilder: (context, product, isSelected) {
+                      return ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue[50],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child:
+                              const Icon(Icons.inventory_2, color: Colors.blue),
+                        ),
+                        title: Text(
+                          product.name,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('الصنف: ${product.category ?? "-"}'),
+                            Text(
+                              'المتاح: ${product.quantity}',
+                              style: TextStyle(
+                                color: product.quantity > 10
+                                    ? Colors.green
+                                    : Colors.orange,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        trailing: Text(
+                          '${product.retailPrice.toStringAsFixed(2)} جنيه',
+                          style: const TextStyle(
+                            color: Colors.blue,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                   onChanged: (value) {
                     setDialogState(() {
                       selectedProduct = value;
@@ -2299,15 +2348,58 @@ class _SellProductScreenState extends State<SellProductScreen>
                     });
                   },
                 ),
+
                 if (selectedProduct != null) ...[
-                  const SizedBox(height: 12),
-                  Text('المتاح: ${selectedProduct!.quantity}'),
+                  const SizedBox(height: 16),
+
+                  // ⭐ كارد معلومات المنتج
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue[200]!),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('المتاح:',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
+                            Text(
+                              '${selectedProduct!.quantity}',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: selectedProduct!.quantity > 10
+                                    ? Colors.green
+                                    : Colors.orange,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Divider(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('الصنف:',
+                                style: TextStyle(fontSize: 12)),
+                            Text(selectedProduct!.category ?? '-',
+                                style: const TextStyle(fontSize: 12)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
                   const SizedBox(height: 12),
                   TextField(
                     controller: quantityController,
                     decoration: const InputDecoration(
                       labelText: 'الكمية',
                       border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.shopping_cart),
                     ),
                     keyboardType: TextInputType.number,
                   ),
@@ -2318,8 +2410,38 @@ class _SellProductScreenState extends State<SellProductScreen>
                       labelText: 'السعر',
                       border: OutlineInputBorder(),
                       suffixText: 'جنيه',
+                      prefixIcon: Icon(Icons.attach_money),
                     ),
                     keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 8),
+
+                  // ⭐ أزرار الأسعار السريعة
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildPriceButton(
+                        'فردي',
+                        selectedProduct!.retailPrice,
+                        priceController,
+                        setDialogState,
+                        Colors.blue,
+                      ),
+                      _buildPriceButton(
+                        'جملة',
+                        selectedProduct!.wholesalePrice,
+                        priceController,
+                        setDialogState,
+                        Colors.orange,
+                      ),
+                      _buildPriceButton(
+                        'ج.ج',
+                        selectedProduct!.bulkWholesalePrice,
+                        priceController,
+                        setDialogState,
+                        Colors.green,
+                      ),
+                    ],
                   ),
                 ],
               ],
@@ -2361,7 +2483,8 @@ class _SellProductScreenState extends State<SellProductScreen>
                         final paymentType =
                             paymentMatch?.group(1)?.trim() ?? 'نقد';
 
-                        final notes = 'فاتورة: $invoiceNumber';
+                        final notes =
+                            'فاتورة: $invoiceNumber | $clientType: $clientName | دفع: $paymentType';
 
                         // بيع المنتج
                         await provider.sellProductWithCustomPrice(
@@ -2372,10 +2495,13 @@ class _SellProductScreenState extends State<SellProductScreen>
                           notes,
                         );
 
-                        // ⭐⭐⭐ تحديث حساب المندوب/العميل
-                        if (clientName != null &&
-                            clientType != null &&
-                            paymentType == 'آجل') {
+                        debugPrint('📝 معلومات الفاتورة:');
+                        debugPrint('   - العميل: $clientName');
+                        debugPrint('   - النوع: $clientType');
+                        debugPrint('   - الدفع: $paymentType');
+
+                        // ⭐⭐⭐ تحديث حساب المندوب/العميل (بغض النظر عن نوع الدفع)
+                        if (clientName != null && clientType != null) {
                           final repProvider =
                               Provider.of<RepresentativeProvider>(context,
                                   listen: false);
@@ -2390,14 +2516,19 @@ class _SellProductScreenState extends State<SellProductScreen>
                                 totalPaid: 0),
                           );
 
-                          if (representative.id != null) {
+                          if (representative.id != null &&
+                              representative.name.isNotEmpty) {
                             final addedAmount = price * quantity;
+
+                            // ⭐ تحديد المبلغ المدفوع حسب نوع الدفع
+                            final paidAmount =
+                                paymentType == 'نقد' ? addedAmount : 0.0;
 
                             final success =
                                 await repProvider.recordDeferredSale(
                               representativeId: representative.id!,
                               totalAmount: addedAmount,
-                              paidAmount: 0, // لأنه آجل
+                              paidAmount: paidAmount,
                               productsSummary:
                                   '${selectedProduct!.name} ($quantity)',
                               invoiceNumber: invoiceNumber,
@@ -2407,9 +2538,23 @@ class _SellProductScreenState extends State<SellProductScreen>
                             if (success) {
                               debugPrint(
                                   '✅ تم تحديث حساب $clientName بإضافة $addedAmount جنيه');
+                              debugPrint(
+                                  '   - المدفوع: ${paidAmount.toStringAsFixed(2)}');
+                              debugPrint(
+                                  '   - المتبقي: ${(addedAmount - paidAmount).toStringAsFixed(2)}');
+                            } else {
+                              debugPrint('❌ فشل تسجيل المعاملة مع $clientName');
                             }
+                          } else {
+                            debugPrint(
+                                '⚠️ المندوب/العميل غير موجود: $clientName');
                           }
+                        } else {
+                          debugPrint(
+                              '⚠️ لم يتم العثور على معلومات المندوب في الملاحظات');
                         }
+
+                        if (!mounted) return;
 
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -2428,6 +2573,9 @@ class _SellProductScreenState extends State<SellProductScreen>
 
                         setState(() {});
                       } catch (e) {
+                        debugPrint('❌ خطأ في إضافة المنتج: $e');
+                        if (!mounted) return;
+
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                               content: Text('خطأ: $e'),
@@ -2439,6 +2587,43 @@ class _SellProductScreenState extends State<SellProductScreen>
               child: const Text('إضافة'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+// ⭐ دالة مساعدة لأزرار الأسعار
+  Widget _buildPriceButton(
+    String label,
+    double price,
+    TextEditingController controller,
+    StateSetter setState,
+    Color color,
+  ) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: OutlinedButton(
+          onPressed: () {
+            setState(() {
+              controller.text = price.toStringAsFixed(2);
+            });
+          },
+          style: OutlinedButton.styleFrom(
+            foregroundColor: color,
+            side: BorderSide(color: color),
+            padding: const EdgeInsets.symmetric(vertical: 8),
+          ),
+          child: Column(
+            children: [
+              Text(label, style: const TextStyle(fontSize: 11)),
+              Text(
+                '${price.toStringAsFixed(0)}',
+                style:
+                    const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
         ),
       ),
     );
