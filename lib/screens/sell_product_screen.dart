@@ -1328,7 +1328,6 @@ class _SellProductScreenState extends State<SellProductScreen>
       // بناء الملاحظات
       String notesBase =
           _notesController.text.isEmpty ? '' : '${_notesController.text} | ';
-      notesBase += 'فاتورة: $invoiceNumber';
 
       if (_selectedRepresentative != null) {
         notesBase += ' | $_clientType: $_selectedClientName';

@@ -267,13 +267,16 @@ class InvoiceScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildWarrantyItem(
-                          '• مدة ضمان البرامج أسبوع واحد من تاريخ الشراء'),
+                          '• ضمان الاوريجنال لمدة شهر من تاريخ الشراء'),
                       _buildWarrantyItem(
-                          '• الضمان على الأجهزة حسب شروط الشركة المصنعة'),
+                          '• ضمان جميع الفلاشات 6 شهور من تاريخ الشراء'),
                       _buildWarrantyItem(
-                          '• لا يتم استرجاع الأجهزة (استبدال فقط)'),
+                          '• جميع الاكسسوارات بدون ضمان (ضمان تجربة فقط)'),
                       _buildWarrantyItem(
-                          '• يجب إحضار هذه الفاتورة عند المطالبة بالضمان'),
+                          '• فترة اختبار المنتج يومان من الاستلام'),
+                      _buildWarrantyItem(
+                        '• استلام الفاتورة يُعتبر إقرارًا من العميل باستلام المنتج بالمواصفات الموضحة بالفاتورة',
+                      ),
                     ],
                   ),
                 ),
@@ -347,7 +350,8 @@ class InvoiceScreen extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Text(
         text,
-        style: const TextStyle(fontSize: 13, height: 1.5),
+        style: const TextStyle(
+            fontSize: 16, height: 1.5, fontWeight: FontWeight.w500),
       ),
     );
   }
